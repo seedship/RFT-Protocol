@@ -1,4 +1,4 @@
-package com.protocoldesigngroup2.app;
+package com.protocoldesigngroup2.xxx;
 
 import junit.framework.Test;
 import junit.framework.TestCase;
