@@ -1,8 +1,10 @@
-package com.protocoldesigngroup2.xxx;
+package com.protocoldesigngroup2.xxx.network;
 
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.util.Map;
+
+import com.protocoldesigngroup2.xxx.messages.Message;
 
 
 public class Network {

@@ -1,4 +1,4 @@
-package com.protocoldesigngroup2.xxx;
+package com.protocoldesigngroup2.xxx.messages;
 
 import java.util.List;
 import java.util.ArrayList;

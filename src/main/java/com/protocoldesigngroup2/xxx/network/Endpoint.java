@@ -1,4 +1,4 @@
-package com.protocoldesigngroup2.xxx;
+package com.protocoldesigngroup2.xxx.network;
 
 import java.net.InetAddress;
 
