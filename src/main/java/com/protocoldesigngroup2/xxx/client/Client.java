@@ -23,8 +23,7 @@ import com.protocoldesigngroup2.xxx.network.Endpoint;
 import com.protocoldesigngroup2.xxx.network.Network;
 
 public class Client {
-    final long ACK_INTERVAL = 3000;
-    final long TIMEOUT_INTERVAL = 150;
+    final long TIMEOUT_INTERVAL = 3000;
     final int TRANSMISSION_RATE = 5;
     final int RANDOM_FILENUMBER_UPPERBOUND = 5000;
 
@@ -109,6 +108,9 @@ public class Client {
     AckThread ackThread;
     TimeoutThread timeoutThread;
     Map<Integer,FileEntry> pendingFiles = new HashMap<Integer,FileEntry>();
+    long ACK_INTERVAL = 250;
+    int currentAckNumber;
+    long rttStart;
     
     public Client(String destinationPath, String address, int port) {
         this.destinationPath = destinationPath;
@@ -144,6 +146,21 @@ public class Client {
         //Random rand = new Random();
         //return rand.nextInt(RANDOM_FILENUMBER_UPPERBOUND); 
         return fileCount++;
+    }
+
+    int ackNumberCount = 0;
+    private void generateAckNumber() {
+        rttStart = System.currentTimeMillis();
+        //Random rand = new Random();
+        //return rand.nextInt(RANDOM_FILENUMBER_UPPERBOUND);
+        this.currentAckNumber = ackNumberCount++;
+    }
+
+    private void receiveAckNumber(int receivedAckNumber) {
+        if (receivedAckNumber == currentAckNumber) {
+            long rtt = System.currentTimeMillis() - rttStart;
+            ACK_INTERVAL = rtt / 4;
+        }
     }
 
     public void download(String... fileInfos) {
@@ -365,6 +382,10 @@ public class Client {
             }
         }
         fileEntry.checksum = checksum;
+    }
+
+    public int getAckNumber() {
+        return currentAckNumber;
     }
 
     public Network getNetwork() {
