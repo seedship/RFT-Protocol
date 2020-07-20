@@ -7,6 +7,7 @@ import java.net.InetAddress;
 import java.net.SocketException;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -23,6 +24,7 @@ import com.protocoldesigngroup2.xxx.network.Network;
 
 public class Client {
     final long ACK_INTERVAL = 3000;
+    final long TIMEOUT_INTERVAL = 150;
     final int TRANSMISSION_RATE = 5;
     final int RANDOM_FILENUMBER_UPPERBOUND = 5000;
 
@@ -64,11 +66,48 @@ public class Client {
             stop = true;
         }  
     }
+
+    private class TimeoutThread extends Thread {
+        boolean stop = false;
+
+        long lastIncomingDataTime;
+
+        public void reset() {
+            lastIncomingDataTime = System.currentTimeMillis();
+        }
+
+        public void run() {
+            reset();
+            try {
+                sleep(TIMEOUT_INTERVAL);
+            } catch(InterruptedException ie) {
+                ie.printStackTrace();
+            }
+            while(!stop) {
+                long duration = System.currentTimeMillis() - lastIncomingDataTime;
+                reset();
+                if (duration > TIMEOUT_INTERVAL) {
+                    restartDownloads();
+                    continue;
+                }
+                try {
+                    sleep(TIMEOUT_INTERVAL - duration);
+                } catch(InterruptedException ie) {
+                    ie.printStackTrace();
+                }
+            }
+        }
+
+        public void stopRunning() {
+            stop = true;
+        }
+    }
     
     String destinationPath;
     Endpoint endpoint;
     Network network;
     AckThread ackThread;
+    TimeoutThread timeoutThread;
     Map<Integer,FileEntry> pendingFiles = new HashMap<Integer,FileEntry>();
     
     public Client(String destinationPath, String address, int port) {
@@ -91,6 +130,8 @@ public class Client {
             // Start sending acknowledgements in a predefined interval
             this.ackThread = new AckThread();
             this.ackThread.start();
+            this.timeoutThread = new TimeoutThread();
+            this.timeoutThread.start();
         } catch (SocketException se) {
             se.printStackTrace();
         } catch (UnknownHostException uhe) {
@@ -191,10 +232,11 @@ public class Client {
             // if all downloads are finished
             network.sendMessage(new CloseConnection(5), endpoint);
             ackThread.stopRunning();
+            timeoutThread.stopRunning();
         }
     }
 
-    private void writeBufferToDisk(FileEntry fileEntry, FileOutputStream fileOut) {
+    private void writeBufferToDisk(FileEntry fileEntry) {
         // Check whether the metadata message has already been received
         if (fileEntry.size == 0) {
             return;
@@ -218,11 +260,14 @@ public class Client {
         try {
             System.out.println("Write chunk for offset " + fileEntry.file.length() + " to file");
             // Open output stream and write chunk to disk and remove it from the buffer
-            fileOut.write(fileEntry.buffer.get(fileEntry.file.length()));
+            FileOutputStream fileOut = new FileOutputStream(fileEntry.file,true);
+            long offset = fileEntry.file.length();
+            fileOut.write(fileEntry.buffer.get(offset));
             fileOut.flush();
-            fileEntry.buffer.remove(fileEntry.file.length());
+            fileOut.close();
+            fileEntry.buffer.remove(offset);
             // Continue with the next offset
-            writeBufferToDisk(fileEntry,fileOut);
+            writeBufferToDisk(fileEntry);
         } catch (IOException ioe) {
             ioe.printStackTrace();
         }
@@ -232,6 +277,7 @@ public class Client {
         if (!pendingFiles.containsKey(fileNumber)) {
             return;
         }
+        timeoutThread.reset();
         FileEntry fileEntry = pendingFiles.get(fileNumber);
 
         // If file does not exist yet, create it
@@ -248,18 +294,12 @@ public class Client {
 
         System.out.println("Add chunk for offset " + offset + " to buffer");
         // Write chunk to buffer and update maxBufferOffset if needed
-        fileEntry.buffer.put(offset, data);
+        fileEntry.buffer.put(offset, Arrays.copyOf(data,data.length));
         fileEntry.maxBufferOffset = Math.max(fileEntry.maxBufferOffset, offset);
         
         // Check if a continous range of chunks has been received at current offset
         // and write them to disk if so
-        try {
-            FileOutputStream fileOut = new FileOutputStream(fileEntry.file,true);
-            writeBufferToDisk(fileEntry,fileOut);
-            fileOut.close();
-        } catch (IOException ioe) {
-            ioe.printStackTrace();
-        }
+        writeBufferToDisk(fileEntry);
     }
 
     private void restartDownload(int fileNumber) {
