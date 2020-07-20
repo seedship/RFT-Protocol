@@ -86,6 +86,7 @@ public class Client {
                 long duration = System.currentTimeMillis() - lastIncomingDataTime;
                 reset();
                 if (duration > TIMEOUT_INTERVAL) {
+                    network.sendMessage(new CloseConnection(6),getEntpoint());
                     restartDownloads();
                     continue;
                 }
@@ -139,6 +140,12 @@ public class Client {
         } catch (UnknownHostException uhe) {
             uhe.printStackTrace();
         }
+    }
+
+    public void shutdown() {
+        network.sendMessage(new CloseConnection(1),getEntpoint());
+        network.stop();
+        deletePendingFiles();
     }
 
     int fileCount = 0;
