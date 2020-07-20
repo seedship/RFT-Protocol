@@ -311,7 +311,8 @@ public class Client {
         System.out.println("Restart download of " + fileEntry.name);
 
         // Clear the buffer
-        pendingFiles.get(fileNumber).buffer = new HashMap<Long,byte[]>();
+        pendingFiles.get(fileNumber).buffer.clear();
+        pendingFiles.get(fileNumber).maxBufferOffset = 0;
         Descriptor[] descriptors = new Descriptor[1];
         descriptors[0] = new Descriptor(fileEntry.name,fileEntry.file.length());
 
