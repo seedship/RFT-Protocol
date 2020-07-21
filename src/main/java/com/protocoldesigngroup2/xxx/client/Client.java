@@ -118,8 +118,7 @@ public class Client {
         this.destinationPath = "./";
         try {
             // Create an endpoint
-            InetAddress inetAddress = InetAddress.getByName(address);
-            this.endpoint = new Endpoint(inetAddress, port);
+            this.endpoint = new Endpoint(address, port);
 
             this.network = Network.createClient(p,q);
 
