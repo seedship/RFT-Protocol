@@ -264,7 +264,12 @@ public class Client {
             // Send an Finish Download Close Connection Message and stop sending Client Ack messages
             // if all downloads are finished
             try {
-                network.sendMessage(new CloseConnection(getAckNumber(),null, CloseConnection.Reason.fromId(5)), endpoint);
+                network.sendMessage(
+                    new CloseConnection(
+                        getAckNumber(),
+                        new ArrayList<Option>(),
+                        CloseConnection.Reason.DOWNLOAD_FINISHED),
+                    endpoint);
             } catch (WrongIdException wie) {
                 wie.printStackTrace();
             }
