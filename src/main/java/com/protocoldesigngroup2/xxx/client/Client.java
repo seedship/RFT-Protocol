@@ -145,7 +145,12 @@ public class Client {
 
     public void shutdown() {
         try {
-            network.sendMessage(new CloseConnection(getAckNumber(),null, CloseConnection.Reason.fromId(1)), endpoint);
+            network.sendMessage(
+                new CloseConnection(
+                    getAckNumber(),
+                    new ArrayList<Option>(),
+                    CloseConnection.Reason.UNSPECIFIED),
+                endpoint);
         } catch (WrongIdException wie) {
             wie.printStackTrace();
         }
