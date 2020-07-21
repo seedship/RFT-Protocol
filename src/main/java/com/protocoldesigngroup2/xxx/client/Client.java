@@ -351,7 +351,7 @@ public class Client {
         pendingFiles.get(fileNumber).buffer.clear();
         pendingFiles.get(fileNumber).maxBufferOffset = 0;
         List<FileDescriptor> descriptors = new ArrayList<FileDescriptor>();
-        FileDescriptor descriptor = new FileDescriptor(fileEntry.file.length(),fileEntry.name);
+        FileDescriptor descriptor = new FileDescriptor(fileEntry.file.length(), fileEntry.name);
         descriptors.add(descriptor);
 
         // Send a new Client Request for the respecting file
