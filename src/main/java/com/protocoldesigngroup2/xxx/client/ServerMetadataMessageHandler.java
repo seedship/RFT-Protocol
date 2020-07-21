@@ -18,9 +18,9 @@ public class ServerMetadataMessageHandler implements MessageHandler {
         if (!(message instanceof ServerMetadata)) {
             return;
         }
-        client.receiveAckNumber(message.getAckNumber());
+        client.receiveAckNumber(message.ackNumber);
         ServerMetadata _message = (ServerMetadata) message;
-        client.setFileMetadata(_message.getFileNumber(), _message.getFileSize(), _message.getChecksum());;
+        client.setFileMetadata(_message.fileNumber, _message.fileSize, _message.checksum);;
     }
 
 }

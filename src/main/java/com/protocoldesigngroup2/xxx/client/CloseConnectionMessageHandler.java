@@ -17,9 +17,9 @@ public class CloseConnectionMessageHandler implements MessageHandler {
         if (!(message instanceof CloseConnection)) {
             return;
         }
-        client.receiveAckNumber(message.getAckNumber());
+        client.receiveAckNumber(message.ackNumber);
         CloseConnection _message = (CloseConnection) message;
-        switch (_message.getReason().getId()) {
+        switch (_message.reason.id) {
             case 0:
             case 1:
             case 2:

@@ -15,7 +15,7 @@ public class Main {
         if (arg.isServer()) {
             // TODO: Add server init here
         } else {
-            Client client = new Client("~/Desktop/",arg.getHostname(),arg.getPort(), arg.getP(), arg.getQ());
+            Client client = new Client(arg.getHostname(),arg.getPort(), arg.getP(), arg.getQ());
             client.download(arg.getFilenames());
         }
     }
