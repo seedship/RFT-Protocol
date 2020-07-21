@@ -180,7 +180,7 @@ public class Client {
         for (String fileInfo : fileInfos) {
             System.out.println("Downloading file \"" + fileInfos.get(i) + "\" to " + destinationPath);
 
-            String fileName = fileInfos.get(i);
+            String fileName = fileInfo;
             int fileNumber = generateFileNumber();
             // Add file entry to pending files
             pendingFiles.put(fileNumber, new FileEntry(new File(destinationPath + fileName),fileName,fileNumber));
