@@ -191,7 +191,7 @@ public class Client {
         }
         
         // Sent the Client Request Message over the network
-        network.sendMessage(new ClientRequest(getAckNumber(),new ArrayList<Option>(),TRANSMISSION_RATE,descriptors), endpoint);
+        network.sendMessage(new ClientRequest(getAckNumber(), new ArrayList<Option>(), TRANSMISSION_RATE, descriptors), endpoint);
     }
 
     private void sendAck() {
