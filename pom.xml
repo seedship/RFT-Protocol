@@ -29,7 +29,7 @@
         <configuration>
           <archive>
             <manifest>
-              <mainClass>com.protocoldesigngroup2.xxx.App</mainClass>
+              <mainClass>com.protocoldesigngroup2.xxx.Main</mainClass>
             </manifest>
           </archive>
         </configuration>
