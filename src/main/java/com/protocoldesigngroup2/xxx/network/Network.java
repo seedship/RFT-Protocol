@@ -21,6 +21,7 @@ public class Network {
     private DatagramSocket socket;
     private float p, q;
     private boolean lastSent;
+    boolean running = true;
 
     private Network(float p, float q) throws java.net.SocketException {
         this.p = p;
@@ -46,7 +47,6 @@ public class Network {
 
     public void listen(int port) {
         byte[] buffer = new byte[2048];
-        boolean running = true;
         ExecutorService executor = Executors.newFixedThreadPool(NUMBER_OF_THREADS);
 
         try {
@@ -63,6 +63,11 @@ public class Network {
         } catch (java.io.IOException e) {
             System.out.println("Caught exception :( (" + e.getMessage() + ")");
         }
+    }
+
+    public void stopListening() {
+        running = false;
+        socket.close();
     }
 
     public void handleMessage(byte[] buffer, int length, final Endpoint endpoint, ExecutorService executor) {
