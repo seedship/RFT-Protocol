@@ -302,7 +302,7 @@ public class Client {
         try {
             System.out.println("Write chunk for offset " + fileEntry.file.length() + " to file");
             // Open output stream and write chunk to disk and remove it from the buffer
-            FileOutputStream fileOut = new FileOutputStream(fileEntry.file,true);
+            FileOutputStream fileOut = new FileOutputStream(fileEntry.file, true);
             long offset = fileEntry.file.length();
             fileOut.write(fileEntry.buffer.get(offset));
             fileOut.flush();
