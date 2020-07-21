@@ -84,7 +84,12 @@ public class Client {
                 reset();
                 if (duration > TIMEOUT_INTERVAL) {
                     try {
-                        network.sendMessage(new CloseConnection(getAckNumber(),null, CloseConnection.Reason.fromId(6)), endpoint);
+                        network.sendMessage(
+                            new CloseConnection(
+                                getAckNumber(),
+                                new ArrayList<Option>(),
+                                CloseConnection.Reason.TIMEOUT),
+                            endpoint);
                     } catch (WrongIdException wie) {
                         wie.printStackTrace();
                     }
