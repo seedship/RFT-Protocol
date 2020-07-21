@@ -379,7 +379,12 @@ public class Client {
             if (fileEntry.checksum != checksum) {
                 // Send Wrong Checksum Close Connection Message
                 try {
-                    network.sendMessage(new CloseConnection(getAckNumber(),null, CloseConnection.Reason.fromId(4)), endpoint);
+                    network.sendMessage(
+                        new CloseConnection(
+                            getAckNumber(),
+                            new ArrayList<Option>(),
+                            CloseConnection.Reason.WRONG_CHECKSUM),
+                        endpoint);
                 } catch (WrongIdException wie) {
                     wie.printStackTrace();
                 }
