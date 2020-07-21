@@ -58,7 +58,7 @@ public class Client {
             }
         }
 
-        public void stopRunning() {
+        public void stop() {
             stop = true;
         }  
     }
