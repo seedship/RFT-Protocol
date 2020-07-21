@@ -11,8 +11,8 @@ public class ClientRequest extends Message {
     public static final int CLIENT_REQUEST_HEADER_LENGTH = 6;
 
     public static class FileDescriptor {
-        private long offset;
-        private String filename;
+        public final long offset;
+        public final String filename;
         
         public FileDescriptor(long offset, String filename) {
             if (filename.length() > 65535) {
@@ -52,8 +52,8 @@ public class ClientRequest extends Message {
         }
     }
 
-    private long maxTransmissionRate;
-    private List<FileDescriptor> files;
+    public final long maxTransmissionRate;
+    public final List<FileDescriptor> files;
 
     public ClientRequest(int ackNumber, List<Option> options, long maxTransmissionRate, List<FileDescriptor> files) {
         super(ackNumber, options);
@@ -93,14 +93,6 @@ public class ClientRequest extends Message {
         return new ClientRequest(ackNumber, options, maxTransmissionRate, files);
     }
 
-    public long getMaxTransmissionRate() {
-        return maxTransmissionRate;
-    }
-
-    public List<FileDescriptor> getFiles() {
-        return files;
-    }
-
     @Override
     public byte[] encode() {
         int totalLength = getGlobalHeaderLength() + CLIENT_REQUEST_HEADER_LENGTH;
@@ -132,8 +124,8 @@ public class ClientRequest extends Message {
 
     @Override
     public String toString() {
-        String r = "ClientRequest, ackNumber: " + getAckNumber()
-                    + ", version: " + getVersion()
+        String r = "ClientRequest, ackNumber: " + ackNumber
+                    + ", version: " + version
                     + ", maxTransmissionRate: " + maxTransmissionRate
                     + ", # files: " + files.size();
         for (FileDescriptor file : files) {

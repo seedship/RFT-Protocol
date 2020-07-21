@@ -26,13 +26,11 @@ public class CloseConnection extends Message {
         TIMEOUT(TIMEOUT_ID),
         FILE_TOO_SMALL(FILE_TOO_SMALL_ID);
 
-        private int id;
+        public final int id;
         private Reason(int id) {
             this.id = id;
         }
-        public int getId() {
-            return id;
-        }
+
         public static Reason fromId(int id) throws WrongIdException {
             switch (id) {
             case UNSPECIFIED_ID:
@@ -57,7 +55,7 @@ public class CloseConnection extends Message {
         }
     }
 
-    private Reason reason;
+    public final Reason reason;
 
     public CloseConnection(int ackNumber, List<Option> options, Reason reason) {
         super(ackNumber, options);
@@ -80,18 +78,14 @@ public class CloseConnection extends Message {
         }
     }
 
-    public Reason getReason() {
-        return reason;
-    }
-
     @Override
     public byte[] encode() {
         int totalLength = getGlobalHeaderLength() + CLOSE_CONNECTION_HEADER_LENGTH;
         byte[] message = new byte[totalLength];
         int offset = encodeGlobalHeader(message);
 
-        message[offset] = (byte)((reason.getId() >> 8) & 0xff);
-        message[offset + 1] = (byte)(reason.getId() & 0xff);
+        message[offset] = (byte)((reason.id >> 8) & 0xff);
+        message[offset + 1] = (byte)(reason.id & 0xff);
 
         return message;
     }
@@ -103,8 +97,8 @@ public class CloseConnection extends Message {
 
     @Override
     public String toString() {
-        return "CloseConnection, ackNumber: " + getAckNumber()
-                + ", version: " + getVersion()
+        return "CloseConnection, ackNumber: " + ackNumber
+                + ", version: " + version
                 + ", reason: " + reason;
     }
 }

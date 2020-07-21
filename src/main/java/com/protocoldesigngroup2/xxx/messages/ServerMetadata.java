@@ -18,12 +18,9 @@ public class ServerMetadata extends Message {
         FILE_IS_EMPTY(FILE_IS_EMPTY_ID),
         ACCESS_DENIED(ACCESS_DENIED_ID);
 
-        private int id;
+        public final int id;
         private Status(int id) {
             this.id = id;
-        }
-        public int getId() {
-            return id;
         }
         public static Status fromId(int id) throws WrongIdException {
             switch (id) {
@@ -41,10 +38,10 @@ public class ServerMetadata extends Message {
         }
     }
 
-    private Status status;
-    private int fileNumber;
-    private long fileSize;
-    private long checksum;
+    public final Status status;
+    public final int fileNumber;
+    public final long fileSize;
+    public final long checksum;
 
     public ServerMetadata(int ackNumber, List<Option> options, Status status, int fileNumber, long fileSize, long /* for now */ checksum) {
         super(ackNumber, options);
@@ -79,22 +76,6 @@ public class ServerMetadata extends Message {
         return new ServerMetadata(ackNumber, options, status, fileNumber, fileSize, checksum);
     }
 
-    public Status getStatus() {
-        return status;
-    }
-
-    public int getFileNumber() {
-        return fileNumber;
-    }
-
-    public long getFileSize() {
-        return fileSize;
-    }
-
-    public long getChecksum() {
-        return checksum;
-    }
-
     @Override
     public byte[] encode() {
         int totalLength = getGlobalHeaderLength() + SERVER_METADATA_HEADER_LENGTH;
@@ -104,7 +85,7 @@ public class ServerMetadata extends Message {
         // Not using loops to (hopefully) improve readability
         // Status & FileNumber
         message[offset] = (byte)(0x00);
-        message[offset + 1] = (byte)(status.getId() & 0xff);
+        message[offset + 1] = (byte)(status.id & 0xff);
         message[offset + 2] = (byte)((fileNumber >> 8) & 0xff);
         message[offset + 3] = (byte)(fileNumber & 0xff);
         // FileSize
@@ -136,8 +117,8 @@ public class ServerMetadata extends Message {
 
     @Override
     public String toString() {
-        return "ServerMetadata, ackNumber: " + getAckNumber()
-                + ", version: " + getVersion()
+        return "ServerMetadata, ackNumber: " + ackNumber
+                + ", version: " + version
                 + ", status: " + status
                 + ", fileNumber: " + fileNumber
                 + ", fileSize: " + fileSize
