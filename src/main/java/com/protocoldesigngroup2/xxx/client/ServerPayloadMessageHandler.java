@@ -18,8 +18,9 @@ public class ServerPayloadMessageHandler implements MessageHandler {
         if (!(message instanceof ServerPayload)) {
             return;
         }
+        client.receiveAckNumber(message.getAckNumber());
         ServerPayload _message = (ServerPayload) message;
-        client.writeChunkToFile(_message.getFileNumber(), _message.getOffset(), _message.getData());
+        client.writeChunkToFile(_message.getFileNumber(), _message.getOffset(), _message.getPayload());
     }
 
 }

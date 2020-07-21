@@ -13,14 +13,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 
-import com.protocoldesigngroup2.xxx.messages.ClientAck;
-import com.protocoldesigngroup2.xxx.messages.ClientRequest;
-import com.protocoldesigngroup2.xxx.messages.CloseConnection;
+import com.protocoldesigngroup2.xxx.messages.*;
 import com.protocoldesigngroup2.xxx.messages.ClientAck.ResendEntry;
-import com.protocoldesigngroup2.xxx.messages.ClientRequest.Descriptor;
+import com.protocoldesigngroup2.xxx.messages.ClientRequest.FileDescriptor;
 import com.protocoldesigngroup2.xxx.messages.Message.Type;
-import com.protocoldesigngroup2.xxx.network.Endpoint;
-import com.protocoldesigngroup2.xxx.network.Network;
+import com.protocoldesigngroup2.xxx.network.*;
 
 public class Client {
     final long TIMEOUT_INTERVAL = 3000;
@@ -33,7 +30,7 @@ public class Client {
         int fileNumber;
         long maxBufferOffset;
         long size;
-        byte[] checksum;
+        long checksum;
         Map<Long,byte[]> buffer;
 
         public FileEntry(File file, String name, int fileNumber) {
@@ -42,7 +39,7 @@ public class Client {
             this.fileNumber = fileNumber;
             this.maxBufferOffset = 0L;
             this.size = 0;
-            this.checksum = new byte[0];
+            this.checksum = 0;
             this.buffer = new HashMap<Long,byte[]>();
         }
     }
@@ -86,7 +83,11 @@ public class Client {
                 long duration = System.currentTimeMillis() - lastIncomingDataTime;
                 reset();
                 if (duration > TIMEOUT_INTERVAL) {
-                    network.sendMessage(new CloseConnection(6),getEntpoint());
+                    try {
+                        network.sendMessage(new CloseConnection(getAckNumber(),null, CloseConnection.Reason.fromId(6)), endpoint);
+                    } catch (WrongIdException wie) {
+                        wie.printStackTrace();
+                    }
                     restartDownloads();
                     continue;
                 }
@@ -113,14 +114,14 @@ public class Client {
     int currentAckNumber;
     long rttStart;
     
-    public Client(String destinationPath, String address, int port) {
+    public Client(String destinationPath, String address, int port, float p, float q) {
         this.destinationPath = destinationPath;
         try {
             // Create an endpoint
             InetAddress inetAddress = InetAddress.getByName(address);
             this.endpoint = new Endpoint(inetAddress, port);
 
-            this.network = new Network();
+            this.network = Network.createClient(p,q);
 
             // Register callbacks
             this.network.addCallbackMethod(Type.SERVER_PAYLOAD, new ServerPayloadMessageHandler(this));
@@ -128,7 +129,7 @@ public class Client {
             this.network.addCallbackMethod(Type.CLOSE_CONNECTION, new CloseConnectionMessageHandler(this));
             
             // Start the network
-            //this.network.start();
+            this.network.listen(port);
 
             // Start sending acknowledgements in a predefined interval
             this.ackThread = new AckThread();
@@ -143,50 +144,54 @@ public class Client {
     }
 
     public void shutdown() {
-        network.sendMessage(new CloseConnection(1),getEntpoint());
-        network.stop();
+        try {
+            network.sendMessage(new CloseConnection(getAckNumber(),null, CloseConnection.Reason.fromId(1)), endpoint);
+        } catch (WrongIdException wie) {
+            wie.printStackTrace();
+        }
+        network.stopListening();
         deletePendingFiles();
     }
 
-    int fileCount = 0;
+    //int fileCount = 0;
     private int generateFileNumber() {
-        //Random rand = new Random();
-        //return rand.nextInt(RANDOM_FILENUMBER_UPPERBOUND); 
-        return fileCount++;
+        Random rand = new Random();
+        return rand.nextInt(RANDOM_FILENUMBER_UPPERBOUND);
+        //return fileCount++;
     }
 
-    int ackNumberCount = 0;
+    //int ackNumberCount = 0;
     private void generateAckNumber() {
         rttStart = System.currentTimeMillis();
-        //Random rand = new Random();
-        //return rand.nextInt(RANDOM_FILENUMBER_UPPERBOUND);
-        this.currentAckNumber = ackNumberCount++;
+        Random rand = new Random();
+        this.currentAckNumber = rand.nextInt(RANDOM_FILENUMBER_UPPERBOUND);
+        //this.currentAckNumber = ackNumberCount++;
     }
 
-    private void receiveAckNumber(int receivedAckNumber) {
+    public void receiveAckNumber(int receivedAckNumber) {
         if (receivedAckNumber == currentAckNumber) {
             long rtt = System.currentTimeMillis() - rttStart;
             ACK_INTERVAL = rtt / 4;
         }
     }
 
-    public void download(String... fileInfos) {
-        Descriptor[] descriptors = new Descriptor[fileInfos.length];
-        for (int i = 0; i<fileInfos.length; i++) {
-            System.out.println("Downloading file \"" + fileInfos[i] + "\" to " + destinationPath);
+    public void download(List<String> fileInfos) {
+        List<FileDescriptor> descriptors = new ArrayList<FileDescriptor>();
+        for (int i = 0; i<fileInfos.size(); i++) {
+            System.out.println("Downloading file \"" + fileInfos.get(i) + "\" to " + destinationPath);
 
-            String fileName = fileInfos[i];
+            String fileName = fileInfos.get(i);
             int fileNumber = generateFileNumber();
             // Add file entry to pending files
             pendingFiles.put(fileNumber, new FileEntry(new File(destinationPath + fileName),fileName,fileNumber));
 
             // Create a descriptor for the Client Request message
-            Descriptor descriptor = new Descriptor(fileName,0);
-            descriptors[i] = descriptor;
+            FileDescriptor descriptor = new FileDescriptor(0,fileName);
+            descriptors.add(descriptor);
         }
         
         // Sent the Client Request Message over the network
-        network.sendMessage(new ClientRequest(5,descriptors), endpoint);
+        network.sendMessage(new ClientRequest(getAckNumber(),new ArrayList<Option>(),TRANSMISSION_RATE,descriptors), endpoint);
     }
 
     private void sendAck() {
@@ -197,7 +202,7 @@ public class Client {
 
             // Collect all resend entries for the respecting file
             List<ResendEntry> resendEntries = new ArrayList<ResendEntry>();
-            int numberOfChunks = 0;
+            short numberOfChunks = 0;
             long resendOffset = 0;
             for (long i = fileEntry.file.length(); i < fileEntry.maxBufferOffset; i += 1024) {
                 // Check whether the chunk for the offset exists in the buffer
@@ -225,7 +230,11 @@ public class Client {
 
             System.out.println("Send Client Ack message");
             // Send the Client Ack Message over the network
-            network.sendMessage(new ClientAck(entry.getKey(), 5, fileEntry.maxBufferOffset + 1024, resendEntries.toArray(new ResendEntry[0])), endpoint);
+            try {
+                network.sendMessage(new ClientAck(getAckNumber(), null, entry.getKey(), ClientAck.Status.fromId(0), TRANSMISSION_RATE, fileEntry.maxBufferOffset + 1024, resendEntries), endpoint);
+            } catch (WrongIdException wie) {
+                wie.printStackTrace();
+            }
         }
     }
 
@@ -254,7 +263,11 @@ public class Client {
         if (pendingFiles.isEmpty()) {
             // Send an Finish Download Close Connection Message and stop sending Client Ack messages
             // if all downloads are finished
-            network.sendMessage(new CloseConnection(5), endpoint);
+            try {
+                network.sendMessage(new CloseConnection(getAckNumber(),null, CloseConnection.Reason.fromId(5)), endpoint);
+            } catch (WrongIdException wie) {
+                wie.printStackTrace();
+            }
             ackThread.stopRunning();
             timeoutThread.stopRunning();
         }
@@ -337,11 +350,12 @@ public class Client {
         // Clear the buffer
         pendingFiles.get(fileNumber).buffer.clear();
         pendingFiles.get(fileNumber).maxBufferOffset = 0;
-        Descriptor[] descriptors = new Descriptor[1];
-        descriptors[0] = new Descriptor(fileEntry.name,fileEntry.file.length());
+        List<FileDescriptor> descriptors = new ArrayList<FileDescriptor>();
+        FileDescriptor descriptor = new FileDescriptor(fileEntry.file.length(),fileEntry.name);
+        descriptors.add(descriptor);
 
         // Send a new Client Request for the respecting file
-        network.sendMessage(new ClientRequest(5,descriptors), endpoint);
+        network.sendMessage(new ClientRequest(getAckNumber(),new ArrayList<Option>(), TRANSMISSION_RATE,descriptors), endpoint);
     }
 
     public void restartDownloads() {
@@ -349,7 +363,7 @@ public class Client {
         pendingFiles.forEach((key,value) -> restartDownload(key));
     }
 
-    public void setFileMetadata(int fileNumber, long size, byte[] checksum) {
+    public void setFileMetadata(int fileNumber, long size, long checksum) {
         if (!pendingFiles.containsKey(fileNumber)) {
             return;
         }
@@ -360,32 +374,22 @@ public class Client {
         // Set the file size in the file entry
         fileEntry.size = size;
         // Compare the recently received checksum with the stored checksum if existing
-        if (fileEntry.checksum.length != 0) {
+        if (fileEntry.checksum != 0) {
             // Check whether both lengths differ
-            if (fileEntry.checksum.length != checksum.length) {
+            if (fileEntry.checksum != checksum) {
                 // Send Wrong Checksum Close Connection Message
-                network.sendMessage(new CloseConnection(4), endpoint);
+                try {
+                    network.sendMessage(new CloseConnection(getAckNumber(),null, CloseConnection.Reason.fromId(4)), endpoint);
+                } catch (WrongIdException wie) {
+                    wie.printStackTrace();
+                }
                 // Delete all data of the file which has been already received
                 fileEntry.file.delete();
                 fileEntry.size = 0;
-                fileEntry.checksum = new byte[0];
+                fileEntry.checksum = 0;
                 // Restart the download from scratch
                 restartDownload(fileNumber);
                 return;
-            }
-            // Check whether checksums differ in their values
-            for (int i=0; i<Math.min(fileEntry.checksum.length,checksum.length);i++) {
-                if (fileEntry.checksum[i] != checksum[i]) {
-                    // Send Wrong Checksum Close Connection Message
-                    network.sendMessage(new CloseConnection(4), endpoint);
-                    // Delete all data of the file which has been already received
-                    fileEntry.file.delete();
-                    fileEntry.size = 0;
-                    fileEntry.checksum = new byte[0];
-                    // Restart the download from scratch
-                    restartDownload(fileNumber);
-                    return;
-                }
             }
         }
         fileEntry.checksum = checksum;
