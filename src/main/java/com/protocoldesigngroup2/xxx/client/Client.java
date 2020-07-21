@@ -45,10 +45,10 @@ public class Client {
     }
 
     private class AckThread extends Thread {
-        boolean stop = false;
+        private boolean listening = true;
 
         public void run() {
-            while(!stop) {
+            while(listening) {
                 try {
                     sleep(ACK_INTERVAL);
                 } catch(InterruptedException ie) {
@@ -58,13 +58,13 @@ public class Client {
             }
         }
 
-        public void stop() {
-            stop = true;
+        public void stopRunning() {
+            listening = false;
         }  
     }
 
     private class TimeoutThread extends Thread {
-        boolean stop = false;
+        private boolean running = true;
 
         long lastIncomingDataTime;
 
@@ -79,20 +79,16 @@ public class Client {
             } catch(InterruptedException ie) {
                 ie.printStackTrace();
             }
-            while(!stop) {
+            while(running) {
                 long duration = System.currentTimeMillis() - lastIncomingDataTime;
                 reset();
                 if (duration > TIMEOUT_INTERVAL) {
-                    try {
-                        network.sendMessage(
+                    network.sendMessage(
                             new CloseConnection(
-                                getAckNumber(),
-                                new ArrayList<Option>(),
-                                CloseConnection.Reason.TIMEOUT),
+                                    getAckNumber(),
+                                    new ArrayList<Option>(),
+                                    CloseConnection.Reason.TIMEOUT),
                             endpoint);
-                    } catch (WrongIdException wie) {
-                        wie.printStackTrace();
-                    }
                     restartDownloads();
                     continue;
                 }
@@ -105,7 +101,7 @@ public class Client {
         }
 
         public void stopRunning() {
-            stop = true;
+            running = false;
         }
     }
 
@@ -114,13 +110,14 @@ public class Client {
     private Network network;
     private AckThread ackThread;
     private TimeoutThread timeoutThread;
-    private Map<Integer,FileEntry> pendingFiles = new HashMap<Integer,FileEntry>();
+    private Map<Integer,FileEntry> pendingFiles;
     private long ACK_INTERVAL = 250;
     private int currentAckNumber;
     private long rttStart;
     
     public Client(String address, int port, float p, float q) {
         this.destinationPath = "./";
+        this.pendingFiles = new HashMap<Integer,FileEntry>();
         try {
             // Create an endpoint
             this.endpoint = new Endpoint(address, port);
@@ -133,7 +130,9 @@ public class Client {
             this.network.addCallbackMethod(Type.CLOSE_CONNECTION, new CloseConnectionMessageHandler(this));
             
             // Start the network
-            this.network.listen(port);
+            new Thread(() -> {
+                this.network.listen(port);
+            }).start();
 
             // Start sending acknowledgements in a predefined interval
             this.ackThread = new AckThread();
@@ -148,16 +147,12 @@ public class Client {
     }
 
     public void shutdown() {
-        try {
-            network.sendMessage(
+        network.sendMessage(
                 new CloseConnection(
-                    getAckNumber(),
-                    new ArrayList<Option>(),
-                    CloseConnection.Reason.UNSPECIFIED),
+                        getAckNumber(),
+                        new ArrayList<Option>(),
+                        CloseConnection.Reason.UNSPECIFIED),
                 endpoint);
-        } catch (WrongIdException wie) {
-            wie.printStackTrace();
-        }
         network.stopListening();
         deletePendingFiles();
     }
@@ -239,20 +234,16 @@ public class Client {
 
             System.out.println("Send Client Ack message");
             // Send the Client Ack Message over the network
-            try {
-                network.sendMessage(
+            network.sendMessage(
                     new ClientAck(
-                        getAckNumber(),
-                        new ArrayList<Option>(),
-                        entry.getKey(),
-                        ClientAck.Status.NOTHING,
-                        TRANSMISSION_RATE,
-                        fileEntry.maxBufferOffset + 1024,
-                        resendEntries),
+                            getAckNumber(),
+                            new ArrayList<Option>(),
+                            entry.getKey(),
+                            ClientAck.Status.NOTHING,
+                            TRANSMISSION_RATE,
+                            fileEntry.maxBufferOffset + 1024,
+                            resendEntries),
                     endpoint);
-            } catch (WrongIdException wie) {
-                wie.printStackTrace();
-            }
         }
     }
 
@@ -281,16 +272,12 @@ public class Client {
         if (pendingFiles.isEmpty()) {
             // Send an Finish Download Close Connection Message and stop sending Client Ack messages
             // if all downloads are finished
-            try {
-                network.sendMessage(
+            network.sendMessage(
                     new CloseConnection(
-                        getAckNumber(),
-                        new ArrayList<Option>(),
-                        CloseConnection.Reason.DOWNLOAD_FINISHED),
+                            getAckNumber(),
+                            new ArrayList<Option>(),
+                            CloseConnection.Reason.DOWNLOAD_FINISHED),
                     endpoint);
-            } catch (WrongIdException wie) {
-                wie.printStackTrace();
-            }
             ackThread.stopRunning();
             timeoutThread.stopRunning();
         }
@@ -401,16 +388,12 @@ public class Client {
             // Check whether both lengths differ
             if (fileEntry.checksum != checksum) {
                 // Send Wrong Checksum Close Connection Message
-                try {
-                    network.sendMessage(
+                network.sendMessage(
                         new CloseConnection(
-                            getAckNumber(),
-                            new ArrayList<Option>(),
-                            CloseConnection.Reason.WRONG_CHECKSUM),
+                                getAckNumber(),
+                                new ArrayList<Option>(),
+                                CloseConnection.Reason.WRONG_CHECKSUM),
                         endpoint);
-                } catch (WrongIdException wie) {
-                    wie.printStackTrace();
-                }
                 // Delete all data of the file which has been already received
                 fileEntry.file.delete();
                 fileEntry.size = 0;

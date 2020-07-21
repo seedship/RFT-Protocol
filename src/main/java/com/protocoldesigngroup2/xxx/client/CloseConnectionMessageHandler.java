@@ -19,15 +19,15 @@ public class CloseConnectionMessageHandler implements MessageHandler {
         }
         client.receiveAckNumber(message.ackNumber);
         CloseConnection _message = (CloseConnection) message;
-        switch (_message.getReason()) {
-            case CloseConnection.Reason.UNSPECIFIED_ID:
-            case CloseConnection.Reason.APPLICATION_CLOSED_ID:
-            case CloseConnection.Reason.UNSUPPORTED_VERSION_ID:
-            case CloseConnection.Reason.FILE_TOO_SMALL_ID:
+        switch (_message.reason.id) {
+            case CloseConnection.UNSPECIFIED_ID:
+            case CloseConnection.APPLICATION_CLOSED_ID:
+            case CloseConnection.UNSUPPORTED_VERSION_ID:
+            case CloseConnection.FILE_TOO_SMALL_ID:
                 client.deletePendingFiles();
                 break;
-            case CloseConnection.Reason.UNKNOWN_REQUEST_ID_ID:
-            case CloseConnection.Reason.TIMEOUT_ID:
+            case CloseConnection.UNKNOWN_REQUEST_ID_ID:
+            case CloseConnection.TIMEOUT_ID:
                 client.restartDownloads();
                 break;
             default:
