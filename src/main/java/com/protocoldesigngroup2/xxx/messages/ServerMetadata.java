@@ -5,6 +5,8 @@ import java.util.List;
 
 public class ServerMetadata extends Message {
     
+    public static final int SERVER_METADATA_HEADER_LENGTH = 20;
+
     public static final int DOWNLOAD_NORMAL_ID = 0;
     public static final int FILE_DOES_NOT_EXIST_ID = 1;
     public static final int FILE_IS_EMPTY_ID = 2;
@@ -54,7 +56,7 @@ public class ServerMetadata extends Message {
     }
 
     public static ServerMetadata decode(byte[] buffer, int offset, int length, int ackNumber, List<Option> options) {
-        if (length != offset + 20) {
+        if (length != offset + SERVER_METADATA_HEADER_LENGTH) {
             System.out.println("Wrong length for Metadata");
             return null;
         }
@@ -95,7 +97,7 @@ public class ServerMetadata extends Message {
 
     @Override
     public byte[] encode() {
-        int totalLength = getGlobalHeaderLength() + 20;
+        int totalLength = getGlobalHeaderLength() + SERVER_METADATA_HEADER_LENGTH;
         byte[] message = new byte[totalLength];
         int offset = encodeGlobalHeader(message);
 

@@ -5,10 +5,13 @@ import java.util.ArrayList;
 
 
 public class ClientAck extends Message {
-
+    
+    public static final int RESEND_ENTRY_LENGTH = 10;
+    public static final int CLIENT_ACK_HEADER_LENGTH = 14;
+    
     public static final int NOTHING_ID = 0;
     public static final int NO_METADATA_RECEIVED_ID = 1;
-
+    
     public static enum Status {
         NOTHING(NOTHING_ID),
         NO_METADATA_RECEIVED(NO_METADATA_RECEIVED_ID);
@@ -101,7 +104,7 @@ public class ClientAck extends Message {
         offset += 14;
 
         // Getting the number of resend entries from the length of the packet
-        int numberOfResendEntries = (length - 14) / 10;
+        int numberOfResendEntries = (length - CLIENT_ACK_HEADER_LENGTH) / RESEND_ENTRY_LENGTH;
         List<ResendEntry> resendEntries = new ArrayList<>(numberOfResendEntries);
         for (int i = 0; i < numberOfResendEntries; i++) {
             int resendFileNumber = ((buffer[offset] & 0xff) << 8) + (buffer[offset + 1] & 0xff);
@@ -112,7 +115,7 @@ public class ClientAck extends Message {
             short resendLength = (short)(buffer[offset + 9] & 0xff);
             ResendEntry resendEntry = new ResendEntry(resendFileNumber, resendOffset, resendLength);
             resendEntries.add(resendEntry);
-            offset += 10;
+            offset += RESEND_ENTRY_LENGTH;
         }
 
         return new ClientAck(ackNumber, options, fileNumber, status, maxTransmissionRate, parsedOffset, resendEntries);
@@ -140,7 +143,9 @@ public class ClientAck extends Message {
 
     @Override
     public byte[] encode() {
-        int totalLength = getGlobalHeaderLength() + 14 + resendEntries.size() * 10;
+        int totalLength = getGlobalHeaderLength()
+                        + CLIENT_ACK_HEADER_LENGTH
+                        + resendEntries.size() * RESEND_ENTRY_LENGTH;
         byte[] message = new byte[totalLength];
         int offset = encodeGlobalHeader(message);
 
@@ -163,10 +168,10 @@ public class ClientAck extends Message {
         message[offset + 12] = (byte)((this.offset >> 8) & 0xff);
         message[offset + 13] = (byte)(this.offset & 0xff);
         
-        offset += 14;
+        offset += CLIENT_ACK_HEADER_LENGTH;
         for (ResendEntry resendEntry : resendEntries) {
             resendEntry.encode(message, offset);
-            offset += 10;
+            offset += RESEND_ENTRY_LENGTH;
         }
         return message;
     }

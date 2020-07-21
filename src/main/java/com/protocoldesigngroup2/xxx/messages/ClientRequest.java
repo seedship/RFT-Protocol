@@ -7,6 +7,9 @@ import java.nio.charset.StandardCharsets;
 
 public class ClientRequest extends Message {
 
+    public static final int FILE_DESCRIPTOR_HEADER_LENGTH = 9;
+    public static final int CLIENT_REQUEST_HEADER_LENGTH = 6;
+
     public static class FileDescriptor {
         private long offset;
         private String filename;
@@ -20,7 +23,7 @@ public class ClientRequest extends Message {
         }
 
         public int getSize() {
-            return filename.length() + 9;
+            return filename.length() + FILE_DESCRIPTOR_HEADER_LENGTH;
         }
 
         public void encode(byte[] buffer, int offset) {
@@ -35,7 +38,12 @@ public class ClientRequest extends Message {
             buffer[offset + 8] = (byte)(filename.length() & 0xff);
 
             byte[] filenameUtf8 = filename.getBytes(StandardCharsets.UTF_8);
-            System.arraycopy(filenameUtf8, 0, buffer, offset + 9, filenameUtf8.length);
+            System.arraycopy(
+                filenameUtf8,
+                0,
+                buffer,
+                offset + FILE_DESCRIPTOR_HEADER_LENGTH,
+                filenameUtf8.length);
         }
 
         @Override
@@ -55,7 +63,7 @@ public class ClientRequest extends Message {
     }
     
     public static ClientRequest decode(byte[] buffer, int offset, int length, int ackNumber, List<Option> options) {
-        if (length < offset + 6) {
+        if (length < offset + CLIENT_REQUEST_HEADER_LENGTH) {
             System.out.println("ClientRequest too short");
             return null;
         }
@@ -64,7 +72,7 @@ public class ClientRequest extends Message {
             maxTransmissionRate = (maxTransmissionRate << 8) + (buffer[offset + i] & 0xff);
         }
         int fileNumber = ((buffer[offset + 4] & 0xff) << 8) + (buffer[offset + 5] & 0xff);
-        offset += 6;
+        offset += CLIENT_REQUEST_HEADER_LENGTH;
         
         List<FileDescriptor> files = new ArrayList<>();
         for (int i = 0; i < fileNumber; i++) {
@@ -73,10 +81,13 @@ public class ClientRequest extends Message {
                 parsedOffset = (parsedOffset << 8) + (buffer[offset + j] & 0xff);
             }
             int filenameLength = ((buffer[offset + 7] & 0xff) << 8) + (buffer[offset + 8] & 0xff);
-            String filename = new String(buffer, offset + 9, filenameLength, StandardCharsets.UTF_8);
+            String filename = new String(buffer,
+                                         offset + FILE_DESCRIPTOR_HEADER_LENGTH,
+                                         filenameLength,
+                                         StandardCharsets.UTF_8);
 
             files.add(new FileDescriptor(parsedOffset, filename));
-            offset += filenameLength + 9;
+            offset += filenameLength + FILE_DESCRIPTOR_HEADER_LENGTH;
         }
 
         return new ClientRequest(ackNumber, options, maxTransmissionRate, files);
@@ -92,7 +103,7 @@ public class ClientRequest extends Message {
 
     @Override
     public byte[] encode() {
-        int totalLength = getGlobalHeaderLength() + 6;
+        int totalLength = getGlobalHeaderLength() + CLIENT_REQUEST_HEADER_LENGTH;
         for (FileDescriptor file : files) {
             totalLength += file.getSize();
         }
@@ -106,7 +117,7 @@ public class ClientRequest extends Message {
         message[offset + 4] = (byte)((files.size() >> 8) & 0xff);
         message[offset + 5] = (byte)(files.size() & 0xff);
 
-        offset += 6;
+        offset += CLIENT_REQUEST_HEADER_LENGTH;
         for (FileDescriptor file : files) {
             file.encode(message, offset);
             offset += file.getSize();

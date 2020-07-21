@@ -4,7 +4,9 @@ import java.util.List;
 
 
 public class CloseConnection extends Message {
-    
+
+    public static final int CLOSE_CONNECTION_HEADER_LENGTH = 2;
+
     public static final int UNSPECIFIED_ID = 0;
     public static final int APPLICATION_CLOSED_ID = 1;
     public static final int UNSUPPORTED_VERSION_ID = 2;
@@ -64,7 +66,7 @@ public class CloseConnection extends Message {
     }
 
     public static CloseConnection decode(byte[] buffer, int offset, int length, int ackNumber, List<Option> options) {
-        if (length != offset + 2) {
+        if (length != offset + CLOSE_CONNECTION_HEADER_LENGTH) {
             System.out.println("Wrong length for CloseConnection");
             return null;
         }
@@ -84,7 +86,7 @@ public class CloseConnection extends Message {
 
     @Override
     public byte[] encode() {
-        int totalLength = getGlobalHeaderLength() + 2;
+        int totalLength = getGlobalHeaderLength() + CLOSE_CONNECTION_HEADER_LENGTH;
         byte[] message = new byte[totalLength];
         int offset = encodeGlobalHeader(message);
 

@@ -4,6 +4,9 @@ import java.util.List;
 
 
 public class ServerPayload extends Message {
+
+    public static int SERVER_PAYLOAD_HEADER_LENGTH = 9;
+    
     // TODO: Remove the need to copy the payload in encode
     private int fileNumber;
     private long offset;
@@ -31,8 +34,8 @@ public class ServerPayload extends Message {
         for (int i = 0; i < 7; i++) {
             parsedOffset = (parsedOffset << 8) + (buffer[offset + 2 + i] & 0xff);
         }
-        byte[] payload = new byte[length - offset - 9];
-        System.arraycopy(buffer, offset + 9, payload, 0, payload.length);
+        byte[] payload = new byte[length - offset - SERVER_PAYLOAD_HEADER_LENGTH];
+        System.arraycopy(buffer, offset + SERVER_PAYLOAD_HEADER_LENGTH, payload, 0, payload.length);
         return new ServerPayload(ackNumber, options, fileNumber, parsedOffset, payload);
     }
 
@@ -50,7 +53,7 @@ public class ServerPayload extends Message {
 
     @Override
     public byte[] encode() {
-        int totalLength = getGlobalHeaderLength() + 9 + payload.length;
+        int totalLength = getGlobalHeaderLength() + SERVER_PAYLOAD_HEADER_LENGTH + payload.length;
         byte[] message = new byte[totalLength];
         int offset = encodeGlobalHeader(message);
 
