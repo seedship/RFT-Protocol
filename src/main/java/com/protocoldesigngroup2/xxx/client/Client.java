@@ -114,8 +114,8 @@ public class Client {
     private int currentAckNumber;
     private long rttStart;
     
-    public Client(String destinationPath, String address, int port, float p, float q) {
-        this.destinationPath = destinationPath;
+    public Client(String address, int port, float p, float q) {
+        this.destinationPath = "./";
         try {
             // Create an endpoint
             InetAddress inetAddress = InetAddress.getByName(address);
