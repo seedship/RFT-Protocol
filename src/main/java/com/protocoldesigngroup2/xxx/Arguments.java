@@ -45,7 +45,7 @@ public class Arguments {
                 args2.port = Math.min(65535, Math.max(1, Integer.parseInt(args[i + 1])));
                 i++;
                 continue;
-            } else if (args2.isClient()) {
+            } else if (!args2.isServer()) {
                 // it must be a file
                 args2.filenames.add(args[i]);
             }
@@ -70,10 +70,6 @@ public class Arguments {
     
     public boolean isServer() {
         return server;
-    }
-    
-    public boolean isClient() {
-        return !server;
     }
 
     public int getPort() {
