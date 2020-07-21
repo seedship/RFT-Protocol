@@ -355,7 +355,7 @@ public class Client {
         descriptors.add(descriptor);
 
         // Send a new Client Request for the respecting file
-        network.sendMessage(new ClientRequest(getAckNumber(),new ArrayList<Option>(), TRANSMISSION_RATE,descriptors), endpoint);
+        network.sendMessage(new ClientRequest(getAckNumber(), new ArrayList<Option>(), TRANSMISSION_RATE,descriptors), endpoint);
     }
 
     public void restartDownloads() {
