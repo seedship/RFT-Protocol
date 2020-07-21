@@ -6,9 +6,9 @@ import com.protocoldesigngroup2.xxx.network.Endpoint;
 import com.protocoldesigngroup2.xxx.network.MessageHandler;
 
 public class CloseConnectionMessageHandler implements MessageHandler {
-    Client client;
+    private Client client;
 
-    CloseConnectionMessageHandler(Client client) {
+    public CloseConnectionMessageHandler(Client client) {
         this.client = client;
     }
 

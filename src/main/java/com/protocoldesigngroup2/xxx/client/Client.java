@@ -20,9 +20,9 @@ import com.protocoldesigngroup2.xxx.messages.Message.Type;
 import com.protocoldesigngroup2.xxx.network.*;
 
 public class Client {
-    final long TIMEOUT_INTERVAL = 3000;
-    final int TRANSMISSION_RATE = 5;
-    final int RANDOM_FILENUMBER_UPPERBOUND = 5000;
+    private final long TIMEOUT_INTERVAL = 3000;
+    private final int TRANSMISSION_RATE = 0;
+    private final int RANDOM_FILENUMBER_UPPERBOUND = 5000;
 
     private class FileEntry {
         File file;
@@ -103,16 +103,16 @@ public class Client {
             stop = true;
         }
     }
-    
-    String destinationPath;
-    Endpoint endpoint;
-    Network network;
-    AckThread ackThread;
-    TimeoutThread timeoutThread;
-    Map<Integer,FileEntry> pendingFiles = new HashMap<Integer,FileEntry>();
-    long ACK_INTERVAL = 250;
-    int currentAckNumber;
-    long rttStart;
+
+    private String destinationPath;
+    private Endpoint endpoint;
+    private Network network;
+    private AckThread ackThread;
+    private TimeoutThread timeoutThread;
+    private Map<Integer,FileEntry> pendingFiles = new HashMap<Integer,FileEntry>();
+    private long ACK_INTERVAL = 250;
+    private int currentAckNumber;
+    private long rttStart;
     
     public Client(String destinationPath, String address, int port, float p, float q) {
         this.destinationPath = destinationPath;

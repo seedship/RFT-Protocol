@@ -7,9 +7,9 @@ import com.protocoldesigngroup2.xxx.network.MessageHandler;
 
 public class ServerMetadataMessageHandler implements MessageHandler {
 
-    Client client;
+    private Client client;
 
-    ServerMetadataMessageHandler(Client client) {
+    public ServerMetadataMessageHandler(Client client) {
         this.client = client;
     }
 
