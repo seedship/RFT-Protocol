@@ -426,7 +426,7 @@ public class Client {
         return network;
     }
 
-    public Endpoint getEntpoint() {
+    public Endpoint getEndpoint() {
         return endpoint;
     }
 }
