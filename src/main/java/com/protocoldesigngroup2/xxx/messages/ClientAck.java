@@ -36,9 +36,9 @@ public class ClientAck extends Message {
     }
 
     public static class ResendEntry {
-        private int fileNumber;
-        private long offset;
-        private short length;
+        public final int fileNumber;
+        public final long offset;
+        public final short length;
 
         public ResendEntry(int fileNumber, long offset, short length) {
             this.fileNumber = fileNumber;
@@ -67,11 +67,11 @@ public class ClientAck extends Message {
         }
     }
 
-    private int fileNumber;
-    private Status status;
-    private long maxTransmissionRate;
-    private long offset;
-    private List<ResendEntry> resendEntries;
+    public final int fileNumber;
+    public final Status status;
+    public final long maxTransmissionRate;
+    public final long offset;
+    public final List<ResendEntry> resendEntries;
 
     public ClientAck(int ackNumber, List<Option> options, int fileNumber, Status status, long maxTransmissionRate, long offset, List<ResendEntry> resendEntries) {
         super(ackNumber, options);
@@ -121,26 +121,6 @@ public class ClientAck extends Message {
         return new ClientAck(ackNumber, options, fileNumber, status, maxTransmissionRate, parsedOffset, resendEntries);
     }
 
-    public int getFileNumber() {
-        return fileNumber;
-    }
-
-    public Status getStatus() {
-        return status;
-    }
-
-    public long getMaxTransmissionRate() {
-        return maxTransmissionRate;
-    }
-
-    public long getOffset() {
-        return offset;
-    }
-
-    public List<ResendEntry> getResendEntries() {
-        return resendEntries;
-    }
-
     @Override
     public byte[] encode() {
         int totalLength = getGlobalHeaderLength()
@@ -183,8 +163,8 @@ public class ClientAck extends Message {
 
     @Override
     public String toString() {
-        String r = "ClientAck; ackNumber: " + getAckNumber()
-                + ", Version: " + getVersion()
+        String r = "ClientAck; ackNumber: " + ackNumber
+                + ", Version: " + version
                 + ", Filenumber: " + fileNumber
                 + ", status: " + status
                 + ", maxTransmissionRate: " + maxTransmissionRate
