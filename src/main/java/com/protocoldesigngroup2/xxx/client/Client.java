@@ -231,7 +231,16 @@ public class Client {
             System.out.println("Send Client Ack message");
             // Send the Client Ack Message over the network
             try {
-                network.sendMessage(new ClientAck(getAckNumber(), null, entry.getKey(), ClientAck.Status.fromId(0), TRANSMISSION_RATE, fileEntry.maxBufferOffset + 1024, resendEntries), endpoint);
+                network.sendMessage(
+                    new ClientAck(
+                        getAckNumber(),
+                        new ArrayList<Option>(),
+                        entry.getKey(),
+                        ClientAck.Status.NOTHING,
+                        TRANSMISSION_RATE,
+                        fileEntry.maxBufferOffset + 1024,
+                        resendEntries),
+                    endpoint);
             } catch (WrongIdException wie) {
                 wie.printStackTrace();
             }
