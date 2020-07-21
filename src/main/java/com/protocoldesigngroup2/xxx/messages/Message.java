@@ -20,13 +20,11 @@ public abstract class Message {
         CLIENT_ACK(CLIENT_ACK_ID),
         CLOSE_CONNECTION(CLOSE_CONNECTION_ID);
 
-        private int id;
+        public final int id;
         private Type(int id) {
             this.id = id;
         }
-        public int getId() {
-            return id;
-        }
+
         public static Type fromId(int id) throws WrongIdException {
             switch (id) {
             case CLIENT_REQUEST_ID:
@@ -45,9 +43,9 @@ public abstract class Message {
         }
     }
 
-    private byte version;
-    private int ackNumber;
-    private List<Option> options;
+    public final byte version;
+    public final int ackNumber;
+    public final List<Option> options;
 
     protected Message(int ackNumber, List<Option> options) {
         if (ackNumber > 255) {
@@ -61,17 +59,6 @@ public abstract class Message {
         this.options = options;
     }
 
-    public int getVersion() {
-        return version;
-    }
-
-    public int getAckNumber() {
-        return ackNumber;
-    }
-
-    public List<Option> getOptions() {
-        return options;
-    }
 
     // Calculates the length of the global header to allocate memory
     public int getGlobalHeaderLength() {
@@ -87,7 +74,7 @@ public abstract class Message {
     // returns the length of the global header
     public int encodeGlobalHeader(byte[] buffer) {
         // Adding always needed stuff
-        buffer[0] = (byte)((version << 4) + getMessageType().getId());
+        buffer[0] = (byte)((version << 4) + getMessageType().id);
         buffer[1] = (byte)(ackNumber);
         buffer[2] = (byte)(options.size());
 

@@ -91,7 +91,7 @@ public class Network {
             return;
         }
         if (!messageHandlers.containsKey(typ)) {
-            System.out.println("No message handler for type " + typ.getId());
+            System.out.println("No message handler for type " + typ.id);
             return;
         }
 

@@ -8,9 +8,9 @@ public class ServerPayload extends Message {
     public static int SERVER_PAYLOAD_HEADER_LENGTH = 9;
     
     // TODO: Remove the need to copy the payload in encode
-    private int fileNumber;
-    private long offset;
-    private byte[] payload;
+    public final int fileNumber;
+    public final long offset;
+    public final byte[] payload;
     
     public ServerPayload(int ackNumber, List<Option> options, int fileNumber, long offset, byte[] payload) {
         super(ackNumber, options);
@@ -37,18 +37,6 @@ public class ServerPayload extends Message {
         byte[] payload = new byte[length - offset - SERVER_PAYLOAD_HEADER_LENGTH];
         System.arraycopy(buffer, offset + SERVER_PAYLOAD_HEADER_LENGTH, payload, 0, payload.length);
         return new ServerPayload(ackNumber, options, fileNumber, parsedOffset, payload);
-    }
-
-    public int getFileNumber() {
-        return fileNumber;
-    }
-
-    public long getOffset() {
-        return offset;
-    }
-
-    public byte[] getPayload() {
-        return payload;
     }
 
     @Override
@@ -79,8 +67,8 @@ public class ServerPayload extends Message {
 
     @Override
     public String toString() {
-        String r = "ServerPayload, ackNumber: " + getAckNumber()
-                    + ", version: " + getVersion()
+        String r = "ServerPayload, ackNumber: " + ackNumber
+                    + ", version: " + version
                     + ", fileNumber: " + fileNumber
                     + ", offset: " + offset
                     + ", payload size: " + payload.length;
