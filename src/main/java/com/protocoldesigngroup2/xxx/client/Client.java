@@ -177,7 +177,7 @@ public class Client {
 
     public void download(List<String> fileInfos) {
         List<FileDescriptor> descriptors = new ArrayList<FileDescriptor>();
-        for (int i = 0; i<fileInfos.size(); i++) {
+        for (String fileInfo : fileInfos) {
             System.out.println("Downloading file \"" + fileInfos.get(i) + "\" to " + destinationPath);
 
             String fileName = fileInfos.get(i);
