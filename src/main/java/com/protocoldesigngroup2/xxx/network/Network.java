@@ -67,6 +67,7 @@ public class Network {
 
     public void stopListening() {
         running = false;
+        socket.close();
     }
 
     public void handleMessage(byte[] buffer, int length, final Endpoint endpoint, ExecutorService executor) {
