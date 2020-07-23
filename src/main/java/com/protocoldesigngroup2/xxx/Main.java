@@ -2,6 +2,7 @@ package com.protocoldesigngroup2.xxx;
 
 
 import com.protocoldesigngroup2.xxx.client.Client;
+import com.protocoldesigngroup2.xxx.server.Server;
 
 public class Main {
     public static void main(String[] args) {
@@ -13,7 +14,8 @@ public class Main {
             return;
         }
         if (arg.isServer()) {
-            // TODO: Add server init here
+            Server server = new Server(arg.getP(), arg.getQ(), arg.getPort());
+            server.start();
         } else {
             Client client = new Client(arg.getHostname(),arg.getPort(), arg.getP(), arg.getQ());
             client.download(arg.getFilenames());

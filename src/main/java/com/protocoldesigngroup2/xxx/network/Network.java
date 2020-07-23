@@ -32,20 +32,32 @@ public class Network {
     }
     
     // Creates the listening endpoint with a fixed port
-    public static Network createServer(float p, float q, int port) throws java.net.SocketException {
-        Network network = new Network(p, q);
-        network.socket = new DatagramSocket(port);
-        return network;
+    public static Network createServer(float p, float q, int port) {
+        try {
+            Network network = new Network(p, q);
+            network.socket = new DatagramSocket(port);
+            return network;
+        } catch (java.net.SocketException ex) {
+            System.out.println("Socket Exception in server creation");
+            ex.printStackTrace();
+            return null;
+        }
     }
     
     // Creates the listening endpoint with a random but available port
-    public static Network createClient(float p, float q) throws java.net.SocketException {
-        Network network = new Network(p, q);
-        network.socket = new DatagramSocket();
-        return network;
+    public static Network createClient(float p, float q) {
+        try {
+            Network network = new Network(p, q);
+            network.socket = new DatagramSocket();
+            return network;
+        } catch (java.net.SocketException ex) {
+            System.out.println("Sockt Exception in client creation");
+            ex.printStackTrace();
+            return null;
+        }
     }
 
-    public void listen(int port) {
+    public void listen() {
         byte[] buffer = new byte[2048];
         ExecutorService executor = Executors.newFixedThreadPool(NUMBER_OF_THREADS);
 

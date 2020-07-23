@@ -48,6 +48,9 @@ public class Client {
         private boolean listening = true;
 
         public void run() {
+            if (network == null) {
+                return;
+            }
             while(listening) {
                 try {
                     sleep(ACK_INTERVAL);
@@ -73,6 +76,9 @@ public class Client {
         }
 
         public void run() {
+            if (network == null) {
+                return;
+            }
             reset();
             try {
                 sleep(TIMEOUT_INTERVAL);
@@ -124,6 +130,10 @@ public class Client {
 
             this.network = Network.createClient(p,q);
 
+            if (network == null) {
+                return;
+            }
+
             // Register callbacks
             this.network.addCallbackMethod(Type.SERVER_PAYLOAD, new ServerPayloadMessageHandler(this));
             this.network.addCallbackMethod(Type.SERVER_METADATA, new ServerMetadataMessageHandler(this));
@@ -131,7 +141,7 @@ public class Client {
             
             // Start the network
             new Thread(() -> {
-                this.network.listen(port);
+                this.network.listen();
             }).start();
 
             // Start sending acknowledgements in a predefined interval
@@ -139,21 +149,21 @@ public class Client {
             this.ackThread.start();
             this.timeoutThread = new TimeoutThread();
             this.timeoutThread.start();
-        } catch (SocketException se) {
-            se.printStackTrace();
         } catch (UnknownHostException uhe) {
             uhe.printStackTrace();
         }
     }
 
     public void shutdown() {
-        network.sendMessage(
-                new CloseConnection(
-                        getAckNumber(),
-                        new ArrayList<Option>(),
-                        CloseConnection.Reason.UNSPECIFIED),
-                endpoint);
-        network.stopListening();
+        if (network != null) {
+            network.sendMessage(
+                    new CloseConnection(
+                            getAckNumber(),
+                            new ArrayList<Option>(),
+                            CloseConnection.Reason.UNSPECIFIED),
+                    endpoint);
+            network.stopListening();
+        }
         deletePendingFiles();
     }
 
@@ -180,6 +190,9 @@ public class Client {
     }
 
     public void download(List<String> fileInfos) {
+        if (network == null) {
+            return;
+        }
         List<FileDescriptor> descriptors = new ArrayList<FileDescriptor>();
         for (String fileInfo : fileInfos) {
             System.out.println("Downloading file \"" + fileInfo + "\" to " + destinationPath);
