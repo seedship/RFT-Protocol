@@ -85,7 +85,10 @@ public class ServerPayload extends Message {
 
         ServerPayload serverPayload = (ServerPayload)o;
         
-        return fileNumber == serverPayload.fileNumber
+        return version == serverPayload.version
+            && ackNumber == serverPayload.ackNumber
+            && options.equals(serverPayload.options)
+            && fileNumber == serverPayload.fileNumber
             && offset == serverPayload.offset
             && Arrays.equals(payload, serverPayload.payload);
     }

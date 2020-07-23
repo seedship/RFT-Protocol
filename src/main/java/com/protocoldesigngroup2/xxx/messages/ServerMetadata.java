@@ -135,7 +135,10 @@ public class ServerMetadata extends Message {
 
         ServerMetadata serverMetadata = (ServerMetadata)o;
         
-        return status == serverMetadata.status
+        return version == serverMetadata.version
+            && ackNumber == serverMetadata.ackNumber
+            && options.equals(serverMetadata.options)
+            && status == serverMetadata.status
             && fileNumber == serverMetadata.fileNumber
             && fileSize == serverMetadata.fileSize
             && checksum == serverMetadata.checksum;
