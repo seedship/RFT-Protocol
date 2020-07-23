@@ -50,6 +50,20 @@ public class ClientRequest extends Message {
         public String toString() {
             return "FileDescriptor, offset: " + offset + ", filename: " + filename;
         }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o)
+                return true;
+    
+            if (!(o instanceof FileDescriptor))
+                return false;
+    
+            FileDescriptor fileDescriptor = (FileDescriptor)o;
+            
+            return offset == fileDescriptor.offset
+                && filename.equals(fileDescriptor.filename);
+        }
     }
 
     public final long maxTransmissionRate;
@@ -132,5 +146,22 @@ public class ClientRequest extends Message {
             r += ", " + file.toString();
         }
         return r;
+    }
+    
+    @Override
+    public boolean equals(Object o) {
+        if (this == o)
+            return true;
+
+        if (!(o instanceof ClientRequest))
+            return false;
+
+        ClientRequest clientRequest = (ClientRequest)o;
+        
+        return version == clientRequest.version
+            && ackNumber == clientRequest.ackNumber
+            && options.equals(clientRequest.options)
+            && maxTransmissionRate == clientRequest.maxTransmissionRate
+            && files.equals(clientRequest.files);
     }
 }

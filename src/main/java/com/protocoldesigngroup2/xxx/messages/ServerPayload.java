@@ -1,7 +1,7 @@
 package com.protocoldesigngroup2.xxx.messages;
 
 import java.util.List;
-
+import java.util.Arrays;
 
 public class ServerPayload extends Message {
 
@@ -55,7 +55,7 @@ public class ServerPayload extends Message {
         message[offset + 7] = (byte)((this.offset >> 8) & 0xff);
         message[offset + 8] = (byte)(this.offset & 0xff);
 
-        System.arraycopy(payload, 0, message, offset + 8, payload.length);
+        System.arraycopy(payload, 0, message, offset + 9, payload.length);
 
         return message;
     }
@@ -73,5 +73,20 @@ public class ServerPayload extends Message {
                     + ", offset: " + offset
                     + ", payload size: " + payload.length;
         return r;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o)
+            return true;
+
+        if (!(o instanceof ServerPayload))
+            return false;
+
+        ServerPayload serverPayload = (ServerPayload)o;
+        
+        return fileNumber == serverPayload.fileNumber
+            && offset == serverPayload.offset
+            && Arrays.equals(payload, serverPayload.payload);
     }
 }
