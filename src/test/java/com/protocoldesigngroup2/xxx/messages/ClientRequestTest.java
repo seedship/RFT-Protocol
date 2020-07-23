@@ -61,4 +61,20 @@ public class ClientRequestTest
         ClientRequest got = ClientRequest.decode(msg, 3, msg.length, ackNumber, new ArrayList<>());
         assertEquals(expected, got);
     }
+
+    public void testDecodeEncoding() {
+        int ackNumber = 0;
+        List<FileDescriptor> fd = new ArrayList<>();
+        fd.add(new FileDescriptor(0, "😋_😅"));
+        fd.add(new FileDescriptor(0, "ÄnötherßWeirdÖne"));
+        ClientRequest expected = new ClientRequest(
+            ackNumber,
+            new ArrayList<>(),
+            0,
+            fd);
+        byte[] msg = expected.encode();
+
+        ClientRequest got = ClientRequest.decode(msg, 3, msg.length, ackNumber, new ArrayList<>());
+        assertEquals(expected, got);
+    }
 }
