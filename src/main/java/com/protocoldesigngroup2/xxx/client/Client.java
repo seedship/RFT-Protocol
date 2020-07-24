@@ -124,6 +124,7 @@ public class Client {
     
     public Client(String address, int port, float p, float q) {
         this.destinationPath = "./download/";
+        new File(this.destinationPath).mkdirs();
         this.pendingFiles = new HashMap<Integer,FileEntry>();
         try {
             // Create an endpoint
@@ -349,7 +350,6 @@ public class Client {
         if (!fileEntry.file.exists()) {
             try {
                 System.out.println("Create new file " + fileEntry.name);
-                fileEntry.file.mkdirs();
                 fileEntry.file.createNewFile();
             } catch (IOException ioe) {
                 ioe.printStackTrace();
