@@ -65,6 +65,21 @@ public class ClientAck extends Message {
                     + ", offset: " + offset
                     + ", length: " + length;
         }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o)
+                return true;
+
+            if (!(o instanceof ResendEntry))
+                return false;
+
+            ResendEntry resendEntry = (ResendEntry)o;
+            
+            return fileNumber == resendEntry.fileNumber
+                && offset == resendEntry.offset
+                && length == resendEntry.length;
+        }
     }
 
     public final int fileNumber;
@@ -173,5 +188,25 @@ public class ClientAck extends Message {
             r += ", re: " + re.toString();
         }
         return r;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o)
+            return true;
+
+        if (!(o instanceof ClientAck))
+            return false;
+
+        ClientAck clientAck = (ClientAck)o;
+        
+        return version == clientAck.version
+            && ackNumber == clientAck.ackNumber
+            && options.equals(clientAck.options)
+            && fileNumber == clientAck.fileNumber
+            && status == clientAck.status
+            && maxTransmissionRate == clientAck.maxTransmissionRate
+            && offset == clientAck.offset
+            && resendEntries.equals(clientAck.resendEntries);
     }
 }

@@ -23,10 +23,12 @@ public class ClientRequest extends Message {
         }
 
         public int getSize() {
-            return filename.length() + FILE_DESCRIPTOR_HEADER_LENGTH;
+            return filename.getBytes(StandardCharsets.UTF_8).length + FILE_DESCRIPTOR_HEADER_LENGTH;
         }
 
         public void encode(byte[] buffer, int offset) {
+            byte[] filenameUtf8 = filename.getBytes(StandardCharsets.UTF_8);
+
             buffer[offset] = (byte)((this.offset >> 48) & 0xff);
             buffer[offset + 1] = (byte)((this.offset >> 40) & 0xff);
             buffer[offset + 2] = (byte)((this.offset >> 32) & 0xff);
@@ -34,10 +36,9 @@ public class ClientRequest extends Message {
             buffer[offset + 4] = (byte)((this.offset >> 16) & 0xff);
             buffer[offset + 5] = (byte)((this.offset >> 8) & 0xff);
             buffer[offset + 6] = (byte)(this.offset & 0xff);
-            buffer[offset + 7] = (byte)((filename.length() >> 8) & 0xff);
-            buffer[offset + 8] = (byte)(filename.length() & 0xff);
+            buffer[offset + 7] = (byte)((filenameUtf8.length >> 8) & 0xff);
+            buffer[offset + 8] = (byte)(filenameUtf8.length & 0xff);
 
-            byte[] filenameUtf8 = filename.getBytes(StandardCharsets.UTF_8);
             System.arraycopy(
                 filenameUtf8,
                 0,
@@ -49,6 +50,20 @@ public class ClientRequest extends Message {
         @Override
         public String toString() {
             return "FileDescriptor, offset: " + offset + ", filename: " + filename;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o)
+                return true;
+    
+            if (!(o instanceof FileDescriptor))
+                return false;
+    
+            FileDescriptor fileDescriptor = (FileDescriptor)o;
+            
+            return offset == fileDescriptor.offset
+                && filename.equals(fileDescriptor.filename);
         }
     }
 
@@ -132,5 +147,22 @@ public class ClientRequest extends Message {
             r += ", " + file.toString();
         }
         return r;
+    }
+    
+    @Override
+    public boolean equals(Object o) {
+        if (this == o)
+            return true;
+
+        if (!(o instanceof ClientRequest))
+            return false;
+
+        ClientRequest clientRequest = (ClientRequest)o;
+        
+        return version == clientRequest.version
+            && ackNumber == clientRequest.ackNumber
+            && options.equals(clientRequest.options)
+            && maxTransmissionRate == clientRequest.maxTransmissionRate
+            && files.equals(clientRequest.files);
     }
 }

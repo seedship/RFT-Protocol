@@ -124,4 +124,23 @@ public class ServerMetadata extends Message {
                 + ", fileSize: " + fileSize
                 + ", checksum: " + checksum;
     }
+        
+    @Override
+    public boolean equals(Object o) {
+        if (this == o)
+            return true;
+
+        if (!(o instanceof ServerMetadata))
+            return false;
+
+        ServerMetadata serverMetadata = (ServerMetadata)o;
+        
+        return version == serverMetadata.version
+            && ackNumber == serverMetadata.ackNumber
+            && options.equals(serverMetadata.options)
+            && status == serverMetadata.status
+            && fileNumber == serverMetadata.fileNumber
+            && fileSize == serverMetadata.fileSize
+            && checksum == serverMetadata.checksum;
+    }
 }

@@ -101,4 +101,17 @@ public class CloseConnection extends Message {
                 + ", version: " + version
                 + ", reason: " + reason;
     }
+        
+    @Override
+    public boolean equals(Object o) {
+        if (this == o)
+            return true;
+
+        if (!(o instanceof CloseConnection))
+            return false;
+
+        CloseConnection closeConnection = (CloseConnection)o;
+        
+        return reason == closeConnection.reason;
+    }
 }
