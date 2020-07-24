@@ -8,7 +8,7 @@ import com.protocoldesigngroup2.xxx.network.Endpoint;
 import com.protocoldesigngroup2.xxx.network.MessageHandler;
 
 import java.util.ArrayList;
-import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -52,10 +52,10 @@ public class ClientAckHandler implements MessageHandler {
                     int fileNumber = entry.fileNumber;
                     Set<Long> missingChunks = clientState.missingChunks.get(fileNumber);
                     if (missingChunks == null) {
-                        clientState.missingChunks.put(fileNumber, Collections.singleton(index));
-                    } else {
-                        missingChunks.add(index);
+                        clientState.missingChunks.put(fileNumber, new HashSet<Long>());
+                        missingChunks = clientState.missingChunks.get(fileNumber);
                     }
+                    missingChunks.add(index);
                 }
             }
             // For every N acks with resend entries, reduce sending rate

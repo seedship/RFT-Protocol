@@ -24,7 +24,7 @@ public class Server extends Thread {
 
     public Server(float p, float q, int port) {
         network = Network.createServer(p, q, port);
-        clientStateMap = new ConcurrentHashMap<>();
+        clientStateMap = new ConcurrentHashMap<Endpoint, ClientState>();
         if (network == null) {
             return;
         }
@@ -71,7 +71,7 @@ public class Server extends Thread {
                                 for (Map.Entry<Integer, Set<Long>> resendEntry : state.missingChunks.entrySet()) {
                                     String fileName = state.files.get(resendEntry.getKey()).filename;
                                     RandomAccessFile f = new RandomAccessFile(fileName, "r");
-                                    Set<Long> toRemove = new HashSet<>();
+                                    Set<Long> toRemove = new HashSet<Long>();
                                     for (Long off : resendEntry.getValue()) {
                                         f.seek(off * KB);
                                         int bytesRead = f.read(fileData);
@@ -87,6 +87,7 @@ public class Server extends Thread {
                                             }
                                         }
                                     }
+                                    f.close();
                                     for (Long l : toRemove) {
                                         // Remove sent resend entries outside loop to prevent
                                         // ConcurrentModificationException
@@ -143,6 +144,7 @@ public class Server extends Thread {
                                     state.incrementCurrentFileOffset();
                                     remainingPackets--;
                                 }
+                                f.close();
                             }
                         }
                     }
