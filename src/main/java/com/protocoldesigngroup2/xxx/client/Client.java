@@ -349,6 +349,7 @@ public class Client {
         if (!fileEntry.file.exists()) {
             try {
                 System.out.println("Create new file " + fileEntry.name);
+                fileEntry.file.mkdirs();
                 fileEntry.file.createNewFile();
             } catch (IOException ioe) {
                 ioe.printStackTrace();
