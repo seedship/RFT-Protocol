@@ -22,7 +22,7 @@ import com.protocoldesigngroup2.xxx.network.*;
 public class Client {
     private final long TIMEOUT_INTERVAL = 3000;
     private final int TRANSMISSION_RATE = 0;
-    private final int RANDOM_FILENUMBER_UPPERBOUND = 5000;
+    private final int RANDOM_FILENUMBER_UPPERBOUND = 255;
 
     private class FileEntry {
         File file;
@@ -89,6 +89,7 @@ public class Client {
                 long duration = System.currentTimeMillis() - lastIncomingDataTime;
                 reset();
                 if (duration > TIMEOUT_INTERVAL) {
+                    System.out.println("TIMEOUT");
                     network.sendMessage(
                             new CloseConnection(
                                     getAckNumber(),
@@ -122,7 +123,8 @@ public class Client {
     private long rttStart;
     
     public Client(String address, int port, float p, float q) {
-        this.destinationPath = "./";
+        this.destinationPath = "./download/";
+        new File(this.destinationPath).mkdirs();
         this.pendingFiles = new HashMap<Integer,FileEntry>();
         try {
             // Create an endpoint
@@ -167,11 +169,11 @@ public class Client {
         deletePendingFiles();
     }
 
-    //int fileCount = 0;
+    int fileCount = 0;
     private int generateFileNumber() {
-        Random rand = new Random();
-        return rand.nextInt(RANDOM_FILENUMBER_UPPERBOUND);
-        //return fileCount++;
+        //Random rand = new Random();
+        //return rand.nextInt(RANDOM_FILENUMBER_UPPERBOUND);
+        return fileCount++;
     }
 
     //int ackNumberCount = 0;
@@ -180,12 +182,15 @@ public class Client {
         Random rand = new Random();
         this.currentAckNumber = rand.nextInt(RANDOM_FILENUMBER_UPPERBOUND);
         //this.currentAckNumber = ackNumberCount++;
+        isNewAckNumberNeeded = false;
     }
 
+    boolean isNewAckNumberNeeded = true;
     public void receiveAckNumber(int receivedAckNumber) {
         if (receivedAckNumber == currentAckNumber) {
             long rtt = System.currentTimeMillis() - rttStart;
-            ACK_INTERVAL = rtt / 4;
+            ACK_INTERVAL = rtt * 100;
+            isNewAckNumberNeeded = true;
         }
     }
 
@@ -221,7 +226,7 @@ public class Client {
             List<ResendEntry> resendEntries = new ArrayList<ResendEntry>();
             short numberOfChunks = 0;
             long resendOffset = 0;
-            for (long i = fileEntry.file.length(); i < fileEntry.maxBufferOffset; i += 1024) {
+            for (long i = fileEntry.file.length() / 1024; i < fileEntry.maxBufferOffset; i++) {
                 // Check whether the chunk for the offset exists in the buffer
                 if (!fileEntry.buffer.containsKey(i)) {
                     // If it is the first chunk in the continous sequence of unreceived offsets
@@ -232,9 +237,9 @@ public class Client {
                     // Increment the length of the continous sequence of unreceived offsets
                     numberOfChunks++;
                 } else {
-                    System.out.println("Add resend entry:\tOffset: " + resendOffset + "\tNumber of Chunks: " + numberOfChunks);
                     
                     if (numberOfChunks > 0) {
+                        System.out.println("Add resend entry:\tOffset: " + resendOffset + "\tNumber of Chunks: " + numberOfChunks);
                         // If there is a chunk for the offset build a resend entry for the preceiding sequence of unreceived offsets
                         resendEntries.add(new ResendEntry(entry.getKey(), resendOffset, numberOfChunks));
                     }
@@ -254,7 +259,7 @@ public class Client {
                             entry.getKey(),
                             ClientAck.Status.NOTHING,
                             TRANSMISSION_RATE,
-                            fileEntry.maxBufferOffset + 1024,
+                            fileEntry.maxBufferOffset + 1,
                             resendEntries),
                     endpoint);
         }
@@ -303,29 +308,30 @@ public class Client {
         }
 
         // Check if the file has been fully downloaded
-        if (fileEntry.file.length() == fileEntry.size) {
+        if (fileEntry.file.length() >= fileEntry.size) {
             finishDownload(fileEntry.fileNumber);
             return;
         }
+
+        long chunkOffset = fileEntry.file.length() / 1024;
 
         // Abort if buffer is empty, 
         // file does not exist or
         // the buffer does not contain the chunk at the next offset
         if (fileEntry.buffer.isEmpty() 
             || !fileEntry.file.exists()
-            || !fileEntry.buffer.containsKey(fileEntry.file.length())) {
+            || !fileEntry.buffer.containsKey(chunkOffset)) {
             return;
         }
 
         try {
-            System.out.println("Write chunk for offset " + fileEntry.file.length() + " to file");
+            System.out.println("Write chunk for offset " + chunkOffset + " to file");
             // Open output stream and write chunk to disk and remove it from the buffer
             FileOutputStream fileOut = new FileOutputStream(fileEntry.file, true);
-            long offset = fileEntry.file.length();
-            fileOut.write(fileEntry.buffer.get(offset));
+            fileOut.write(fileEntry.buffer.get(chunkOffset));
             fileOut.flush();
             fileOut.close();
-            fileEntry.buffer.remove(offset);
+            fileEntry.buffer.remove(chunkOffset);
             // Continue with the next offset
             writeBufferToDisk(fileEntry);
         } catch (IOException ioe) {
@@ -333,7 +339,7 @@ public class Client {
         }
     }
 
-    public void writeChunkToFile(int fileNumber, long offset, byte[] data) {
+    public void writeChunkToFile(int fileNumber, long chunkOffset, byte[] data) {
         if (!pendingFiles.containsKey(fileNumber)) {
             return;
         }
@@ -352,10 +358,14 @@ public class Client {
             }
         }
 
-        System.out.println("Add chunk for offset " + offset + " to buffer");
+        System.out.println("Add chunk for offset " + chunkOffset + " to buffer");
         // Write chunk to buffer and update maxBufferOffset if needed
-        fileEntry.buffer.put(offset, Arrays.copyOf(data,data.length));
-        fileEntry.maxBufferOffset = Math.max(fileEntry.maxBufferOffset, offset);
+        long bytesToWrite = 1024;
+        if (fileEntry.size != 0) {
+            bytesToWrite = Math.min(bytesToWrite,fileEntry.size - chunkOffset);
+        }
+        fileEntry.buffer.put(chunkOffset, Arrays.copyOf(data,data.length));
+        fileEntry.maxBufferOffset = Math.max(fileEntry.maxBufferOffset, chunkOffset);
         
         // Check if a continous range of chunks has been received at current offset
         // and write them to disk if so
@@ -374,7 +384,7 @@ public class Client {
         pendingFiles.get(fileNumber).buffer.clear();
         pendingFiles.get(fileNumber).maxBufferOffset = 0;
         List<FileDescriptor> descriptors = new ArrayList<FileDescriptor>();
-        FileDescriptor descriptor = new FileDescriptor(fileEntry.file.length(), fileEntry.name);
+        FileDescriptor descriptor = new FileDescriptor(fileEntry.file.length() / 1024, fileEntry.name);
         descriptors.add(descriptor);
 
         // Send a new Client Request for the respecting file
@@ -420,6 +430,7 @@ public class Client {
     }
 
     public int getAckNumber() {
+        if (isNewAckNumberNeeded) generateAckNumber();
         return currentAckNumber;
     }
 

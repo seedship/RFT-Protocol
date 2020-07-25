@@ -87,6 +87,7 @@ public class Server extends Thread {
                                             }
                                         }
                                     }
+                                    f.close();
                                     for (Long l : toRemove) {
                                         // Remove sent resend entries outside loop to prevent
                                         // ConcurrentModificationException
@@ -143,6 +144,7 @@ public class Server extends Thread {
                                     state.incrementCurrentFileOffset();
                                     remainingPackets--;
                                 }
+                                f.close();
                             }
                         }
                     }
