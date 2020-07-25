@@ -172,19 +172,19 @@ public class Server extends Thread {
                 // NOTE Assuming Status, file number, file size, checksum
                 network.sendMessage(new ServerMetadata(state.getLastReceivedAckNum(),
                         new ArrayList<>(), ServerMetadata.Status.DOWNLOAD_NORMAL,
-                        state.getCurrentFile(), f.length(), f.hashCode()), endpoint);
+                        state.getCurrentFile(), f.length(), new byte[16]), endpoint);
             } else {
                 // Send Metadata with file empty
                 network.sendMessage(new ServerMetadata(state.getLastReceivedAckNum(),
                         new ArrayList<>(), ServerMetadata.Status.FILE_IS_EMPTY,
-                        state.getCurrentFile(), f.length(), f.hashCode()), endpoint);
+                        state.getCurrentFile(), f.length(), new byte[16]), endpoint);
                 state.incrementCurrentFile();
             }
         } else {
             // Send Metadata with file does not exist
             network.sendMessage(new ServerMetadata(state.getLastReceivedAckNum(),
                     new ArrayList<>(), ServerMetadata.Status.FILE_DOES_NOT_EXIST,
-                    state.getCurrentFile(), 0L, 0L), endpoint);
+                    state.getCurrentFile(), 0L, new byte[16]), endpoint);
             state.incrementCurrentFile();
         }
         // Set sent metadata true

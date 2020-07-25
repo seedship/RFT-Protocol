@@ -3,7 +3,6 @@ package com.protocoldesigngroup2.xxx.server;
 import com.protocoldesigngroup2.xxx.messages.ClientAck;
 import com.protocoldesigngroup2.xxx.messages.CloseConnection;
 import com.protocoldesigngroup2.xxx.messages.Message;
-import com.protocoldesigngroup2.xxx.messages.Option;
 import com.protocoldesigngroup2.xxx.network.Endpoint;
 import com.protocoldesigngroup2.xxx.network.MessageHandler;
 
