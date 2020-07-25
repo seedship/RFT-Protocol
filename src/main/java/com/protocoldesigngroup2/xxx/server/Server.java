@@ -71,7 +71,7 @@ public class Server extends Thread {
                                 for (Map.Entry<Integer, Set<Long>> resendEntry : state.missingChunks.entrySet()) {
                                     String fileName = state.files.get(resendEntry.getKey()).filename;
                                     RandomAccessFile f = new RandomAccessFile(fileName, "r");
-                                    Set<Long> toRemove = new HashSet<Long>();
+                                    Set<Long> toRemove = new HashSet<>();
                                     for (Long off : resendEntry.getValue()) {
                                         f.seek(off * KB);
                                         int bytesRead = f.read(fileData);
