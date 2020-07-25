@@ -1,12 +1,10 @@
-package com.protocoldesigngroup2.xxx;
+package com.protocoldesigngroup2.xxx.messages;
 
 import junit.framework.Test;
 import junit.framework.TestCase;
 import junit.framework.TestSuite;
 
 import java.util.ArrayList;
-
-import com.protocoldesigngroup2.xxx.messages.ServerPayload;
 
 /**
  * Unit test for simple App.
