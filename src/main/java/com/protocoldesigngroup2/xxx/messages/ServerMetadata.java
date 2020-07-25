@@ -1,11 +1,12 @@
 package com.protocoldesigngroup2.xxx.messages;
 
 import java.util.List;
+import java.util.Arrays;
 
 
 public class ServerMetadata extends Message {
     
-    public static final int SERVER_METADATA_HEADER_LENGTH = 20;
+    public static final int SERVER_METADATA_HEADER_LENGTH = 28;
 
     public static final int DOWNLOAD_NORMAL_ID = 0;
     public static final int FILE_DOES_NOT_EXIST_ID = 1;
@@ -41,10 +42,14 @@ public class ServerMetadata extends Message {
     public final Status status;
     public final int fileNumber;
     public final long fileSize;
-    public final long checksum;
+    public final byte[] checksum;
 
-    public ServerMetadata(int ackNumber, List<Option> options, Status status, int fileNumber, long fileSize, long /* for now */ checksum) {
+    public ServerMetadata(int ackNumber, List<Option> options, Status status, int fileNumber, long fileSize, byte[] checksum) {
         super(ackNumber, options);
+
+        if (checksum.length != 16) {
+            throw new RuntimeException("Checksum must be 16 bytes long (MD5).");
+        }
 
         this.status = status;
         this.fileNumber = fileNumber;
@@ -69,10 +74,8 @@ public class ServerMetadata extends Message {
         for (int i = 0; i < 8; i++) {
             fileSize = (fileSize << 8) + (buffer[offset + 4 + i] & 0xff);
         }
-        long checksum = 0;
-        for (int i = 0; i < 8; i++) {
-            checksum = (checksum << 8) + (buffer[offset + 12 + i] & 0xff);
-        }
+        byte[] checksum = new byte[16];
+        System.arraycopy(buffer, offset + 12, checksum, 0, checksum.length);
         return new ServerMetadata(ackNumber, options, status, fileNumber, fileSize, checksum);
     }
 
@@ -98,14 +101,15 @@ public class ServerMetadata extends Message {
         message[offset + 10] = (byte)((fileSize >> 8) & 0xff);
         message[offset + 11] = (byte)(fileSize & 0xff);
         // Checksum
-        message[offset + 12] = (byte)((checksum >> 56) & 0xff);
-        message[offset + 13] = (byte)((checksum >> 48) & 0xff);
-        message[offset + 14] = (byte)((checksum >> 40) & 0xff);
-        message[offset + 15] = (byte)((checksum >> 32) & 0xff);
-        message[offset + 16] = (byte)((checksum >> 24) & 0xff);
-        message[offset + 17] = (byte)((checksum >> 16) & 0xff);
-        message[offset + 18] = (byte)((checksum >> 8) & 0xff);
-        message[offset + 19] = (byte)(checksum & 0xff);
+        System.arraycopy(checksum, 0, message, offset + 12, checksum.length);
+        // message[offset + 12] = (byte)((checksum >> 56) & 0xff);
+        // message[offset + 13] = (byte)((checksum >> 48) & 0xff);
+        // message[offset + 14] = (byte)((checksum >> 40) & 0xff);
+        // message[offset + 15] = (byte)((checksum >> 32) & 0xff);
+        // message[offset + 16] = (byte)((checksum >> 24) & 0xff);
+        // message[offset + 17] = (byte)((checksum >> 16) & 0xff);
+        // message[offset + 18] = (byte)((checksum >> 8) & 0xff);
+        // message[offset + 19] = (byte)(checksum & 0xff);
         
         return message;
     }
@@ -141,6 +145,6 @@ public class ServerMetadata extends Message {
             && status == serverMetadata.status
             && fileNumber == serverMetadata.fileNumber
             && fileSize == serverMetadata.fileSize
-            && checksum == serverMetadata.checksum;
+            && Arrays.equals(checksum, serverMetadata.checksum);
     }
 }
