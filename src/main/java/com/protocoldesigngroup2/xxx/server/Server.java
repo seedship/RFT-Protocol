@@ -24,7 +24,7 @@ public class Server extends Thread {
 
     public Server(float p, float q, int port) {
         network = Network.createServer(p, q, port);
-        clientStateMap = new ConcurrentHashMap<Endpoint, ClientState>();
+        clientStateMap = new ConcurrentHashMap<>();
         if (network == null) {
             return;
         }
