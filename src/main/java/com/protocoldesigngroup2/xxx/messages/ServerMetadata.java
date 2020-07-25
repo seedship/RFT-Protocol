@@ -102,14 +102,6 @@ public class ServerMetadata extends Message {
         message[offset + 11] = (byte)(fileSize & 0xff);
         // Checksum
         System.arraycopy(checksum, 0, message, offset + 12, checksum.length);
-        // message[offset + 12] = (byte)((checksum >> 56) & 0xff);
-        // message[offset + 13] = (byte)((checksum >> 48) & 0xff);
-        // message[offset + 14] = (byte)((checksum >> 40) & 0xff);
-        // message[offset + 15] = (byte)((checksum >> 32) & 0xff);
-        // message[offset + 16] = (byte)((checksum >> 24) & 0xff);
-        // message[offset + 17] = (byte)((checksum >> 16) & 0xff);
-        // message[offset + 18] = (byte)((checksum >> 8) & 0xff);
-        // message[offset + 19] = (byte)(checksum & 0xff);
         
         return message;
     }
@@ -126,7 +118,7 @@ public class ServerMetadata extends Message {
                 + ", status: " + status
                 + ", fileNumber: " + fileNumber
                 + ", fileSize: " + fileSize
-                + ", checksum: " + checksum;
+                + ", checksum length: " + checksum.length;
     }
         
     @Override
