@@ -5,19 +5,21 @@ import java.util.Arrays;
 
 
 public class ServerMetadata extends Message {
-    
+
     public static final int SERVER_METADATA_HEADER_LENGTH = 28;
 
     public static final int DOWNLOAD_NORMAL_ID = 0;
     public static final int FILE_DOES_NOT_EXIST_ID = 1;
     public static final int FILE_IS_EMPTY_ID = 2;
     public static final int ACCESS_DENIED_ID = 3;
+    public static final int OFFSET_BIGGER_THAN_FILESIZE_ID = 4;
 
     public static enum Status {
         DOWNLOAD_NORMAL(DOWNLOAD_NORMAL_ID),
         FILE_DOES_NOT_EXIST(FILE_DOES_NOT_EXIST_ID),
         FILE_IS_EMPTY(FILE_IS_EMPTY_ID),
-        ACCESS_DENIED(ACCESS_DENIED_ID);
+        ACCESS_DENIED(ACCESS_DENIED_ID),
+        OFFSET_BIGGER_THAN_FILESIZE(OFFSET_BIGGER_THAN_FILESIZE_ID);
 
         public final int id;
         private Status(int id) {
@@ -33,6 +35,8 @@ public class ServerMetadata extends Message {
                 return FILE_IS_EMPTY;
             case ACCESS_DENIED_ID:
                 return ACCESS_DENIED;
+            case OFFSET_BIGGER_THAN_FILESIZE_ID:
+                return OFFSET_BIGGER_THAN_FILESIZE;
             default:
                 throw new WrongIdException("Wrong status (Metadata): " + id);
             }
@@ -102,7 +106,7 @@ public class ServerMetadata extends Message {
         message[offset + 11] = (byte)(fileSize & 0xff);
         // Checksum
         System.arraycopy(checksum, 0, message, offset + 12, checksum.length);
-        
+
         return message;
     }
 
@@ -120,7 +124,7 @@ public class ServerMetadata extends Message {
                 + ", fileSize: " + fileSize
                 + ", checksum length: " + checksum.length;
     }
-        
+
     @Override
     public boolean equals(Object o) {
         if (this == o)
@@ -130,7 +134,7 @@ public class ServerMetadata extends Message {
             return false;
 
         ServerMetadata serverMetadata = (ServerMetadata)o;
-        
+
         return version == serverMetadata.version
             && ackNumber == serverMetadata.ackNumber
             && options.equals(serverMetadata.options)
