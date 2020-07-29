@@ -21,7 +21,7 @@ public class ServerMetadataMessageHandler implements MessageHandler {
         client.receiveAckNumber(message.ackNumber);
         ServerMetadata _message = (ServerMetadata) message;
         // TODO: Add correct checksum here
-        client.setFileMetadata(_message.fileNumber, _message.fileSize, 0L);
+        client.setFileMetadata(_message.fileNumber, _message.fileSize, _message.checksum);
     }
 
 }

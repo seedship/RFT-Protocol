@@ -31,7 +31,7 @@ public class Client {
         int fileNumber;
         long maxBufferOffset;
         long size;
-        long checksum;
+        byte[] checksum;
         Map<Long,byte[]> buffer;
 
         public FileEntry(File file, String name, int fileNumber) {
@@ -40,7 +40,7 @@ public class Client {
             this.fileNumber = fileNumber;
             this.maxBufferOffset = 0L;
             this.size = 0;
-            this.checksum = 0;
+            this.checksum = new byte[0];
             this.buffer = new HashMap<Long,byte[]>();
         }
     }
@@ -397,7 +397,7 @@ public class Client {
         pendingFiles.forEach((key,value) -> restartDownload(key));
     }
 
-    public void setFileMetadata(int fileNumber, long size, long checksum) {
+    public void setFileMetadata(int fileNumber, long size, byte[] checksum) {
         if (!pendingFiles.containsKey(fileNumber)) {
             return;
         }
@@ -408,9 +408,9 @@ public class Client {
         // Set the file size in the file entry
         fileEntry.size = size;
         // Compare the recently received checksum with the stored checksum if existing
-        if (fileEntry.checksum != 0) {
+        if (fileEntry.checksum.length != 0) {
             // Check whether both lengths differ
-            if (fileEntry.checksum != checksum) {
+            if (!utils.compareMD5(fileEntry.checksum,checksum)) {
                 // Send Wrong Checksum Close Connection Message
                 network.sendMessage(
                         new CloseConnection(
@@ -421,7 +421,7 @@ public class Client {
                 // Delete all data of the file which has been already received
                 fileEntry.file.delete();
                 fileEntry.size = 0;
-                fileEntry.checksum = 0;
+                fileEntry.checksum = new byte[0];
                 // Restart the download from scratch
                 restartDownload(fileNumber);
                 return;
