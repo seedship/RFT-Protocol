@@ -6,6 +6,7 @@ import com.protocoldesigngroup2.xxx.messages.ServerMetadata;
 import com.protocoldesigngroup2.xxx.messages.ServerPayload;
 import com.protocoldesigngroup2.xxx.network.Endpoint;
 import com.protocoldesigngroup2.xxx.network.Network;
+import com.protocoldesigngroup2.xxx.utils.utils;
 
 import java.io.File;
 import java.io.RandomAccessFile;
@@ -17,8 +18,6 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class Server extends Thread {
-    public static final int KB = 1024;
-
     public final Map<Endpoint, ClientState> clientStateMap;
     public final Network network;
 
@@ -67,13 +66,13 @@ public class Server extends Thread {
                                 break;
                             } else if (state.missingChunks.size() > 0) {
                                 // Resend entries -- send them first
-                                byte[] fileData = new byte[KB];
+                                byte[] fileData = new byte[utils.KB];
                                 for (Map.Entry<Integer, Set<Long>> resendEntry : state.missingChunks.entrySet()) {
                                     String fileName = state.files.get(resendEntry.getKey()).filename;
                                     RandomAccessFile f = new RandomAccessFile(fileName, "r");
                                     Set<Long> toRemove = new HashSet<>();
                                     for (Long off : resendEntry.getValue()) {
-                                        f.seek(off * KB);
+                                        f.seek(off * utils.KB);
                                         int bytesRead = f.read(fileData);
                                         toRemove.add(off);
                                         // NOTE - client can set resend entries from offsets that are beyond the file
@@ -106,8 +105,7 @@ public class Server extends Thread {
                             //Resend Metadata if needed for previous files
                             for (int idx = 0; idx < state.getCurrentFile(); idx++) {
                                 if (!state.sentMetadata.get(idx)) {
-                                    String resendFileName = state.files.get(idx).filename;
-                                    sendMetadata(resendFileName, state, endpoint);
+                                    sendMetadata(idx, state, endpoint);
                                     remainingPackets--;
                                     if (remainingPackets == 0) {
                                         break;
@@ -118,19 +116,19 @@ public class Server extends Thread {
                                 break;
                             }
                             //Send payload
-                            String fileName = state.files.get(state.getCurrentFile()).filename;
                             if (!state.sentMetadata.get(state.getCurrentFile())) {
                                 // We have not sent metadata
-                                sendMetadata(fileName, state, endpoint);
+                                sendMetadata(state.getCurrentFile(), state, endpoint);
                                 remainingPackets--;
                             } else {
                                 // Send Payloads
                                 // NOTE this cast might cause problems for big files, but it is how Java defines the
                                 // function
                                 long off = state.getCurrentOffset();
+                                String fileName = state.files.get(state.getCurrentFile()).filename;
                                 RandomAccessFile f = new RandomAccessFile(fileName, "r");
-                                f.seek(off * KB);
-                                byte[] fileData = new byte[KB];
+                                f.seek(off * utils.KB);
+                                byte[] fileData = new byte[utils.KB];
                                 int bytesRead = f.read(fileData);
                                 if (bytesRead == -1) {
                                     // reached EOF, move to next file
@@ -163,31 +161,40 @@ public class Server extends Thread {
         }
     }
 
-    private void sendMetadata(String fileName, ClientState state, Endpoint endpoint) {
+    private void sendMetadata(int idx, ClientState state, Endpoint endpoint) {
+        if (idx >= state.files.size()) {
+            System.out.println("Error! offset in sendMetadata bigger than ");
+        }
+        String fileName = state.files.get(idx).filename;
+        byte[] md5 = utils.generateMD5(fileName);
         File f = new File(fileName);
         if (f.exists() && f.isFile()) {
-            if (f.length() > 0) {
+            if (state.files.get(idx).offset >= f.length()) {
+                // Offset too big
+                network.sendMessage(new ServerMetadata(state.getLastReceivedAckNum(),
+                        new ArrayList<>(), ServerMetadata.Status.OFFSET_BIGGER_THAN_FILESIZE,
+                        idx, f.length(), md5), endpoint);
+                state.incrementCurrentFile();
+            } else if (f.length() > 0) {
                 // Send Metadata as normal
-                // TODO set hash
-                // NOTE Assuming Status, file number, file size, checksum
                 network.sendMessage(new ServerMetadata(state.getLastReceivedAckNum(),
                         new ArrayList<>(), ServerMetadata.Status.DOWNLOAD_NORMAL,
-                        state.getCurrentFile(), f.length(), new byte[16]), endpoint);
+                        idx, f.length(), md5), endpoint);
             } else {
                 // Send Metadata with file empty
                 network.sendMessage(new ServerMetadata(state.getLastReceivedAckNum(),
                         new ArrayList<>(), ServerMetadata.Status.FILE_IS_EMPTY,
-                        state.getCurrentFile(), f.length(), new byte[16]), endpoint);
+                        idx, f.length(), md5), endpoint);
                 state.incrementCurrentFile();
             }
         } else {
             // Send Metadata with file does not exist
             network.sendMessage(new ServerMetadata(state.getLastReceivedAckNum(),
                     new ArrayList<>(), ServerMetadata.Status.FILE_DOES_NOT_EXIST,
-                    state.getCurrentFile(), 0L, new byte[16]), endpoint);
+                    idx, 0L, md5), endpoint);
             state.incrementCurrentFile();
         }
         // Set sent metadata true
-        state.sentMetadata.put(state.getCurrentFile(), true);
+        state.sentMetadata.put(idx, true);
     }
 }

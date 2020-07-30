@@ -18,6 +18,7 @@ import com.protocoldesigngroup2.xxx.messages.ClientAck.ResendEntry;
 import com.protocoldesigngroup2.xxx.messages.ClientRequest.FileDescriptor;
 import com.protocoldesigngroup2.xxx.messages.Message.Type;
 import com.protocoldesigngroup2.xxx.network.*;
+import com.protocoldesigngroup2.xxx.utils.utils;
 
 public class Client {
     private final long TIMEOUT_INTERVAL = 3000;
@@ -226,7 +227,7 @@ public class Client {
             List<ResendEntry> resendEntries = new ArrayList<ResendEntry>();
             short numberOfChunks = 0;
             long resendOffset = 0;
-            for (long i = fileEntry.file.length() / 1024; i < fileEntry.maxBufferOffset; i++) {
+            for (long i = fileEntry.file.length() / utils.KB; i < fileEntry.maxBufferOffset; i++) {
                 // Check whether the chunk for the offset exists in the buffer
                 if (!fileEntry.buffer.containsKey(i)) {
                     // If it is the first chunk in the continous sequence of unreceived offsets
@@ -313,7 +314,7 @@ public class Client {
             return;
         }
 
-        long chunkOffset = fileEntry.file.length() / 1024;
+        long chunkOffset = fileEntry.file.length() / utils.KB;
 
         // Abort if buffer is empty, 
         // file does not exist or
@@ -360,7 +361,7 @@ public class Client {
 
         System.out.println("Add chunk for offset " + chunkOffset + " to buffer");
         // Write chunk to buffer and update maxBufferOffset if needed
-        long bytesToWrite = 1024;
+        long bytesToWrite = utils.KB;
         if (fileEntry.size != 0) {
             bytesToWrite = Math.min(bytesToWrite,fileEntry.size - chunkOffset);
         }
@@ -384,7 +385,7 @@ public class Client {
         pendingFiles.get(fileNumber).buffer.clear();
         pendingFiles.get(fileNumber).maxBufferOffset = 0;
         List<FileDescriptor> descriptors = new ArrayList<FileDescriptor>();
-        FileDescriptor descriptor = new FileDescriptor(fileEntry.file.length() / 1024, fileEntry.name);
+        FileDescriptor descriptor = new FileDescriptor(fileEntry.file.length() / utils.KB, fileEntry.name);
         descriptors.add(descriptor);
 
         // Send a new Client Request for the respecting file

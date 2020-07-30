@@ -26,6 +26,5 @@ public class ClientRequestHandler implements MessageHandler {
                 req.ackNumber);
 
         server.clientStateMap.put(endpoint, s);
-        server.interrupt();
     }
 }
