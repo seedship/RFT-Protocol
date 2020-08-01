@@ -206,7 +206,9 @@ public class Client {
             String fileName = fileInfo;
             int fileNumber = generateFileNumber();
             // Add file entry to pending files
-            pendingFiles.put(fileNumber, new FileEntry(new File(destinationPath + fileName),fileName,fileNumber));
+            File file = new File(destinationPath + fileName);
+            file.delete();
+            pendingFiles.put(fileNumber, new FileEntry(file,fileName,fileNumber));
 
             // Create a descriptor for the Client Request message
             FileDescriptor descriptor = new FileDescriptor(0,fileName);
@@ -284,6 +286,10 @@ public class Client {
     }
 
     private void finishDownload(int fileNumber) {
+        FileEntry fileEntry = pendingFiles.get(fileNumber);
+        if (!utils.compareMD5(fileEntry.checksum,utils.generateMD5(destinationPath + fileEntry.name))) {
+            restartDownload(fileNumber);
+        }
         System.out.println("Finish download of " + fileNumber);
         // Remove the file from the pending downloads
         pendingFiles.remove(fileNumber);
