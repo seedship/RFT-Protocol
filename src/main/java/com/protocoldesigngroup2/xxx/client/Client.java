@@ -305,6 +305,7 @@ public class Client {
                     endpoint);
             ackThread.stopRunning();
             timeoutThread.stopRunning();
+            network.stopListening();
         }
     }
 
@@ -390,12 +391,12 @@ public class Client {
         // Clear the buffer
         pendingFiles.get(fileNumber).buffer.clear();
         pendingFiles.get(fileNumber).maxBufferOffset = 0;
-        List<FileDescriptor> descriptors = new ArrayList<FileDescriptor>();
-        FileDescriptor descriptor = new FileDescriptor(fileEntry.file.length() / utils.KB, fileEntry.name);
-        descriptors.add(descriptor);
+        //List<FileDescriptor> descriptors = new ArrayList<FileDescriptor>();
+        //FileDescriptor descriptor = new FileDescriptor(fileEntry.file.length() / utils.KB, fileEntry.name);
+        //descriptors.add(descriptor);
 
         // Send a new Client Request for the respecting file
-        network.sendMessage(new ClientRequest(getAckNumber(), new ArrayList<Option>(), TRANSMISSION_RATE,descriptors), endpoint);
+        //network.sendMessage(new ClientRequest(getAckNumber(), new ArrayList<Option>(), TRANSMISSION_RATE,descriptors), endpoint);
     }
 
     public void restartDownloads() {
