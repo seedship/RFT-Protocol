@@ -190,7 +190,7 @@ public class Client {
     public void receiveAckNumber(int receivedAckNumber) {
         if (receivedAckNumber == currentAckNumber) {
             long rtt = System.currentTimeMillis() - rttStart;
-            ACK_INTERVAL = rtt * 100;
+            ACK_INTERVAL = rtt / 4;
             isNewAckNumberNeeded = true;
         }
     }

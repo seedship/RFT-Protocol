@@ -8,16 +8,15 @@ import com.protocoldesigngroup2.xxx.network.Endpoint;
 import com.protocoldesigngroup2.xxx.network.Network;
 import com.protocoldesigngroup2.xxx.utils.utils;
 
-import java.io.File;
+import java.io.IOException;
 import java.io.RandomAccessFile;
-import java.time.LocalTime;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class Server extends Thread {
+    // Server will give 2 extra seconds to each file above what spec defines before closing connection
+    public static final long SERVER_LEEWAY = (long)2E3;
+    public static final long PERIOD_MS = (long)1E3;
     public final Map<Endpoint, ClientState> clientStateMap;
     public final Network network;
 
@@ -46,114 +45,26 @@ public class Server extends Thread {
 
         while (true) {
             try {
-                long startTimeMS = LocalTime.now().toNanoOfDay() / 1000;
+                long startTimeMS = System.currentTimeMillis();
+                System.out.println("Entering service loop. Active Sessions: " + clientStateMap.size());
                 if (!clientStateMap.isEmpty()) {
                     // Go through each client state, and send data
                     // Starting from resend entries and then from current offset
                     // Delete entries if last ack received was too long ago
+                    removeExpiredClients();
                     for (Map.Entry<Endpoint, ClientState> entry : clientStateMap.entrySet()) {
                         ClientState state = entry.getValue();
                         Endpoint endpoint = entry.getKey();
-                        long remainingPackets = state.getTransmissionSpeed();
-                        while (remainingPackets > 0) {
-                            // For now, timeout after 5 seconds. We can update this later
-                            if (LocalTime.now().toNanoOfDay() - state.getLastReceivedAckNS() > 5E9) {
-                                // Timeout expired, close session with reason timeout
-                                network.sendMessage(new CloseConnection(state.getLastReceivedAckNum(),
-                                        new ArrayList<>(), CloseConnection.Reason.TIMEOUT), endpoint);
-                                clientStateMap.remove(endpoint);
-                                // Move to next connection
-                                break;
-                            } else if (state.missingChunks.size() > 0) {
-                                // Resend entries -- send them first
-                                byte[] fileData = new byte[utils.KB];
-                                for (Map.Entry<Integer, Set<Long>> resendEntry : state.missingChunks.entrySet()) {
-                                    String fileName = state.files.get(resendEntry.getKey()).filename;
-                                    RandomAccessFile f = new RandomAccessFile(fileName, "r");
-                                    Set<Long> toRemove = new HashSet<>();
-                                    for (Long off : resendEntry.getValue()) {
-                                        f.seek(off * utils.KB);
-                                        int bytesRead = f.read(fileData);
-                                        toRemove.add(off);
-                                        // NOTE - client can set resend entries from offsets that are beyond the file
-                                        // and this will be stuck forever
-                                        if (bytesRead != -1) {
-                                            network.sendMessage(new ServerPayload(state.getLastReceivedAckNum(),
-                                                    new ArrayList<>(), resendEntry.getKey(), off, fileData), endpoint);
-                                            remainingPackets--;
-                                            if (remainingPackets == 0) {
-                                                break;
-                                            }
-                                        }
-                                    }
-                                    f.close();
-                                    for (Long l : toRemove) {
-                                        // Remove sent resend entries outside loop to prevent
-                                        // ConcurrentModificationException
-                                        resendEntry.getValue().remove(l);
-                                    }
-                                    if (remainingPackets == 0) {
-                                        break;
-                                    }
-                                }
-                            } else if (state.getCurrentFile() >= state.files.size()) {
-                                // All files for this client finished and no resend entries. Wait for client to close
-                                // Connection or ask for resend.
-                                // Move to next connection
-                                break;
-                            }
-                            //Resend Metadata if needed for previous files
-                            for (int idx = 0; idx < state.getCurrentFile(); idx++) {
-                                if (!state.sentMetadata.get(idx)) {
-                                    sendMetadata(idx, state, endpoint);
-                                    remainingPackets--;
-                                    if (remainingPackets == 0) {
-                                        break;
-                                    }
-                                }
-                            }
-                            if (remainingPackets == 0) {
-                                break;
-                            }
-                            //Send payload
-                            if (!state.sentMetadata.get(state.getCurrentFile())) {
-                                // We have not sent metadata
-                                sendMetadata(state.getCurrentFile(), state, endpoint);
-                                remainingPackets--;
-                            } else {
-                                // Send Payloads
-                                // NOTE this cast might cause problems for big files, but it is how Java defines the
-                                // function
-                                long off = state.getCurrentOffset();
-                                String fileName = state.files.get(state.getCurrentFile()).filename;
-                                RandomAccessFile f = new RandomAccessFile(fileName, "r");
-                                f.seek(off * utils.KB);
-                                byte[] fileData = new byte[utils.KB];
-                                int bytesRead = f.read(fileData);
-                                if (bytesRead == -1) {
-                                    // reached EOF, move to next file
-                                    state.incrementCurrentFile();
-                                } else {
-                                    // Otherwise send payload
-                                    network.sendMessage(new ServerPayload(state.getLastReceivedAckNum(),
-                                                    new ArrayList<>(), state.getCurrentFile(), state.getCurrentOffset(),
-                                                    fileData),
-                                            endpoint);
-                                    state.incrementCurrentFileOffset();
-                                    remainingPackets--;
-                                }
-                                f.close();
-                            }
-                        }
+                        serviceClient(state, endpoint);
                     }
                 }
 
-                long nowMS = LocalTime.now().toNanoOfDay() / 1000;
-                if (nowMS - startTimeMS > 0) {
-                    sleep(nowMS - startTimeMS);
+                long nowMS = System.currentTimeMillis();
+                long sleepMS = PERIOD_MS - (nowMS - startTimeMS);
+                System.out.println("Finishing service loop, sleeping for " + sleepMS +" ms.");
+                if (sleepMS > 0) {
+                    sleep(sleepMS);
                 }
-            } catch (InterruptedException ex) {
-                System.out.println("Interrupted by client get request");
             } catch (Exception ex) {
                 System.out.println("Unexpected Exception: " + ex);
                 ex.printStackTrace();
@@ -161,14 +72,128 @@ public class Server extends Thread {
         }
     }
 
-    private void sendMetadata(int idx, ClientState state, Endpoint endpoint) {
-        if (idx >= state.files.size()) {
-            System.out.println("Error! offset in sendMetadata bigger than ");
+    private void removeExpiredClients() {
+        List<Endpoint> expired = new ArrayList<>();
+        for (Map.Entry<Endpoint, ClientState> entry : clientStateMap.entrySet()) {
+            ClientState state = entry.getValue();
+            Endpoint endpoint = entry.getKey();
+            long lastHeardFrom = System.currentTimeMillis() - state.getLastReceivedAckMS();
+            long expireTime = SERVER_LEEWAY + 3 * state.getEstimatedRTTMS();
+            System.out.println(endpoint + " TTL is " + (expireTime - lastHeardFrom) +". RTT is " + state.getEstimatedRTTMS());
+            if (lastHeardFrom > expireTime) {
+                // Timeout expired, close session with reason timeout
+                expired.add(endpoint);
+            }
         }
+        for (Endpoint endpoint : expired) {
+            // Timeout expired, close session with reason timeout
+            ClientState state = clientStateMap.remove(endpoint);
+            network.sendMessage(new CloseConnection(state.getLastReceivedAckNum(),
+                    new ArrayList<>(), CloseConnection.Reason.TIMEOUT), endpoint);
+            state.closeAllFiles();
+            System.out.println(endpoint + " has timed out");
+        }
+    }
+
+    private void serviceClient(ClientState state, Endpoint endpoint) throws IOException {
+        long remainingPackets = state.getTransmissionSpeed();
+        while (remainingPackets > 0) {
+             if (state.missingChunks.size() > 0) {
+                // Resend entries -- send them first
+                byte[] fileData = new byte[utils.KB];
+                for (Map.Entry<Integer, Set<Long>> resendEntry : state.missingChunks.entrySet()) {
+                    RandomAccessFile f = state.getFileAccess(resendEntry.getKey());
+                    Set<Long> toRemove = new HashSet<>();
+                    for (Long off : resendEntry.getValue()) {
+                        // NOTE - client can set resend entries from files that do not exist and this
+                        // will be stuck forever
+                        toRemove.add(off);
+                        if (f != null) {
+                            f.seek(off * utils.KB);
+                            int bytesRead = f.read(fileData);
+                            // NOTE - client can set resend entries from offsets that are beyond the
+                            // file and this will be stuck forever
+                            if (bytesRead != -1) {
+                                System.out.println("Sending payload for file " + resendEntry.getKey() + " at offset " + off + ".");
+                                network.sendMessage(new ServerPayload(state.getLastReceivedAckNum(),
+                                                new ArrayList<>(), resendEntry.getKey(), off, fileData),
+                                        endpoint);
+                                remainingPackets--;
+                                if (remainingPackets == 0) {
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    for (Long l : toRemove) {
+                        // Remove sent resend entries outside loop to prevent
+                        // ConcurrentModificationException
+                        resendEntry.getValue().remove(l);
+                    }
+                    if (remainingPackets == 0) {
+                        return;
+                    }
+                }
+                // Finish processing resend entries
+
+            }
+            // Resend Metadata if needed for previous files
+            for (int idx = 0; idx < state.getCurrentFile(); idx++) {
+                if (!state.sentMetadata.get(idx)) {
+                    sendMetadata(idx, state, endpoint);
+                    remainingPackets--;
+                    if (remainingPackets == 0) {
+                        return;
+                    }
+                }
+            }
+             if (state.getCurrentFile() >= state.files.size()) {
+                // All files for this client finished and no resend entries. Wait for client to close
+                // Connection or ask for resend.
+                // Move to next connection
+                return;
+            }
+            // Send payload
+            if (!state.sentMetadata.get(state.getCurrentFile())) {
+                // We have not sent metadata
+                sendMetadata(state.getCurrentFile(), state, endpoint);
+                remainingPackets--;
+            } else {
+                // Send Payloads
+                long off = state.getCurrentOffset();
+                RandomAccessFile f = state.getFileAccess(state.getCurrentFile());
+                System.out.println("Sending payload for file " + state.getCurrentFile() + " at offset " + off + ".");
+                // If file did not exist, filenumber should have been incremented in send metadata
+                assert f != null;
+                f.seek(off * utils.KB);
+                byte[] fileData = new byte[utils.KB];
+                int bytesRead = f.read(fileData);
+                System.out.println("bytes read: " + bytesRead);
+                if (bytesRead == -1) {
+                    // reached EOF, move to next file
+                    state.incrementCurrentFile();
+                } else {
+                    // Otherwise send payload
+                    network.sendMessage(new ServerPayload(state.getLastReceivedAckNum(),
+                                    new ArrayList<>(), state.getCurrentFile(), state.getCurrentOffset(),
+                                    fileData),
+                            endpoint);
+                    state.incrementCurrentFileOffset();
+                    remainingPackets--;
+                }
+            }
+            System.out.println("Remaining packets: " + remainingPackets);
+        }
+    }
+
+    private void sendMetadata(int idx, ClientState state, Endpoint endpoint) throws IOException {
+        assert idx < state.files.size();
         String fileName = state.files.get(idx).filename;
         byte[] md5 = utils.generateMD5(fileName);
-        File f = new File(fileName);
-        if (f.exists() && f.isFile()) {
+        assert md5 != null;
+        RandomAccessFile f = state.getFileAccess(idx);
+        System.out.println("Sending Metadata for file " + idx);
+        if (f != null) {
             if (state.files.get(idx).offset >= f.length()) {
                 // Offset too big
                 network.sendMessage(new ServerMetadata(state.getLastReceivedAckNum(),
