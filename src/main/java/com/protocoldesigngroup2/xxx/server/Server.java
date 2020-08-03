@@ -10,13 +10,17 @@ import com.protocoldesigngroup2.xxx.utils.utils;
 
 import java.io.IOException;
 import java.io.RandomAccessFile;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class Server extends Thread {
     // Server will give 2 extra seconds to each file above what spec defines before closing connection
-    public static final long SERVER_LEEWAY = (long)2E3;
-    public static final long PERIOD_MS = (long)1E3;
+    public static final long SERVER_LEEWAY = 2000L;
+    public static final long PERIOD_MS = 1000L;
     public final Map<Endpoint, ClientState> clientStateMap;
     public final Network network;
 
@@ -61,7 +65,7 @@ public class Server extends Thread {
 
                 long nowMS = System.currentTimeMillis();
                 long sleepMS = PERIOD_MS - (nowMS - startTimeMS);
-                System.out.println("Finishing service loop, sleeping for " + sleepMS +" ms.");
+                System.out.println("Finishing service loop, sleeping for " + sleepMS + " ms.");
                 if (sleepMS > 0) {
                     sleep(sleepMS);
                 }
@@ -79,7 +83,7 @@ public class Server extends Thread {
             Endpoint endpoint = entry.getKey();
             long lastHeardFrom = System.currentTimeMillis() - state.getLastReceivedAckMS();
             long expireTime = SERVER_LEEWAY + 3 * state.getEstimatedRTTMS();
-            System.out.println(endpoint + " TTL is " + (expireTime - lastHeardFrom) +". RTT is " + state.getEstimatedRTTMS());
+            System.out.println(endpoint + " TTL is " + (expireTime - lastHeardFrom) + ". RTT is " + state.getEstimatedRTTMS());
             if (lastHeardFrom > expireTime) {
                 // Timeout expired, close session with reason timeout
                 expired.add(endpoint);
@@ -98,7 +102,7 @@ public class Server extends Thread {
     private void serviceClient(ClientState state, Endpoint endpoint) throws IOException {
         long remainingPackets = state.getTransmissionSpeed();
         while (remainingPackets > 0) {
-             if (state.missingChunks.size() > 0) {
+            if (state.missingChunks.size() > 0) {
                 // Resend entries -- send them first
                 byte[] fileData = new byte[utils.KB];
                 for (Map.Entry<Integer, Set<Long>> resendEntry : state.missingChunks.entrySet()) {
@@ -147,7 +151,7 @@ public class Server extends Thread {
                     }
                 }
             }
-             if (state.getCurrentFile() >= state.files.size()) {
+            if (state.getCurrentFile() >= state.files.size()) {
                 // All files for this client finished and no resend entries. Wait for client to close
                 // Connection or ask for resend.
                 // Move to next connection
@@ -156,7 +160,11 @@ public class Server extends Thread {
             // Send payload
             if (!state.sentMetadata.get(state.getCurrentFile())) {
                 // We have not sent metadata
-                sendMetadata(state.getCurrentFile(), state, endpoint);
+                boolean nonNormalMetadata = sendMetadata(state.getCurrentFile(), state, endpoint);
+                if (nonNormalMetadata) {
+                    // File should be skipped
+                    state.incrementCurrentFile();
+                }
                 remainingPackets--;
             } else {
                 // Send Payloads
@@ -186,40 +194,45 @@ public class Server extends Thread {
         }
     }
 
-    private void sendMetadata(int idx, ClientState state, Endpoint endpoint) throws IOException {
+    // Returns true if non normal metadata was sent, otherwise returns false
+    private boolean sendMetadata(int idx, ClientState state, Endpoint endpoint) throws IOException {
         assert idx < state.files.size();
         String fileName = state.files.get(idx).filename;
         byte[] md5 = utils.generateMD5(fileName);
         assert md5 != null;
         RandomAccessFile f = state.getFileAccess(idx);
-        System.out.println("Sending Metadata for file " + idx);
+        // Set sent metadata true
+        state.sentMetadata.put(idx, true);
         if (f != null) {
             if (state.files.get(idx).offset >= f.length()) {
                 // Offset too big
                 network.sendMessage(new ServerMetadata(state.getLastReceivedAckNum(),
                         new ArrayList<>(), ServerMetadata.Status.OFFSET_BIGGER_THAN_FILESIZE,
                         idx, f.length(), md5), endpoint);
-                state.incrementCurrentFile();
+                System.out.println("Sending Offset Too Big Metadata for file " + idx);
+                return true;
             } else if (f.length() > 0) {
                 // Send Metadata as normal
                 network.sendMessage(new ServerMetadata(state.getLastReceivedAckNum(),
                         new ArrayList<>(), ServerMetadata.Status.DOWNLOAD_NORMAL,
                         idx, f.length(), md5), endpoint);
+                System.out.println("Sending Normal Metadata for file " + idx);
+                return false;
             } else {
                 // Send Metadata with file empty
                 network.sendMessage(new ServerMetadata(state.getLastReceivedAckNum(),
                         new ArrayList<>(), ServerMetadata.Status.FILE_IS_EMPTY,
                         idx, f.length(), md5), endpoint);
-                state.incrementCurrentFile();
+                System.out.println("Sending File Empty Metadata for file " + idx);
+                return true;
             }
         } else {
             // Send Metadata with file does not exist
             network.sendMessage(new ServerMetadata(state.getLastReceivedAckNum(),
                     new ArrayList<>(), ServerMetadata.Status.FILE_DOES_NOT_EXIST,
                     idx, 0L, md5), endpoint);
-            state.incrementCurrentFile();
+            System.out.println("Sending File Does Not exist Metadata for file " + idx);
+            return true;
         }
-        // Set sent metadata true
-        state.sentMetadata.put(idx, true);
     }
 }

@@ -5,9 +5,9 @@ import com.protocoldesigngroup2.xxx.messages.ClientRequest;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.RandomAccessFile;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -49,7 +49,7 @@ public class ClientState {
 
     private int receivedDups; // Counter to keep track of x4 ACKs
 
-    private final Map<Integer, RandomAccessFile> fileAccess;
+    private final Map<Integer, Optional<RandomAccessFile>> fileAccess;
 
     public ClientState(List<ClientRequest.FileDescriptor> files, long maximumTransmissionSpeed,
                        long lastReceivedAckMS, int lastReceivedAckNum) {
@@ -74,25 +74,26 @@ public class ClientState {
 
     public RandomAccessFile getFileAccess(int index) {
         if(fileAccess.containsKey(index)) {
-            return fileAccess.get(index);
+            Optional<RandomAccessFile> f = fileAccess.get(index);
+            return f.orElse(null);
         }
         try {
             RandomAccessFile f = new RandomAccessFile(files.get(index).filename, "r");
-            fileAccess.put(index, f);
+            fileAccess.put(index, Optional.of(f));
             return f;
         } catch (FileNotFoundException ex) {
             // File does not exist or is directory
-            fileAccess.put(index, null);
+            fileAccess.put(index, Optional.empty());
             return null;
         }
     }
 
     public void closeAllFiles() {
         System.out.println("Closing all files in client state with file hash: " + files.hashCode());
-        for (RandomAccessFile f : fileAccess.values()) {
-            if (f != null) {
+        for (Optional<RandomAccessFile> f : fileAccess.values()) {
+            if (f.isPresent()) {
                 try {
-                    f.close();
+                    f.get().close();
                 } catch (IOException ex) {
                     ex.printStackTrace();
                 }
