@@ -32,6 +32,11 @@ public class Endpoint {
     }
 
     @Override
+    public String toString() {
+        return addr.toString() + ":" + port;
+    }
+
+    @Override
     public boolean equals(Object o) {
         if (!(o instanceof Endpoint)) {
             return false;

@@ -17,7 +17,13 @@ public class CloseConnectionHandler implements MessageHandler {
             System.out.println("CloseConnectionHandler received non Close Connection message");
             return;
         }
-        server.clientStateMap.remove(endpoint);
+        ClientState s = server.clientStateMap.remove(endpoint);
+        if (s != null) {
+            s.closeAllFiles();
+            System.out.println("Received Close Connection from endpoint " + endpoint + ". FileHash: " + s.files.hashCode());
+        } else {
+            System.out.println("Received Close Connection from endpoint " + endpoint + ". However, this endpoint was not found.");
+        }
     }
 
 }

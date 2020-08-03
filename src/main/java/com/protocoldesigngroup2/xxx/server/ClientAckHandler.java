@@ -27,9 +27,11 @@ public class ClientAckHandler implements MessageHandler {
         ClientAck ack = (ClientAck) message;
         // TODO sync with network
         // Get Client State
+        System.out.println("Received ACK from " + endpoint);
         ClientState clientState = server.clientStateMap.get(endpoint);
         if (clientState == null) {
             // Close Connection (Unknown RequestID)
+            assert server.network != null;
             server.network.sendMessage(new CloseConnection(ack.ackNumber, new ArrayList<>(),
                     CloseConnection.Reason.UNKNOWN_REQUEST_ID), endpoint);
             return;
@@ -51,7 +53,7 @@ public class ClientAckHandler implements MessageHandler {
                     int fileNumber = entry.fileNumber;
                     Set<Long> missingChunks = clientState.missingChunks.get(fileNumber);
                     if (missingChunks == null) {
-                        clientState.missingChunks.put(fileNumber, new HashSet<Long>());
+                        clientState.missingChunks.put(fileNumber, new HashSet<>());
                         missingChunks = clientState.missingChunks.get(fileNumber);
                     }
                     missingChunks.add(index);
