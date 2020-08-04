@@ -208,7 +208,7 @@ public class Client {
             // Add file entry to pending files
             File file = new File(destinationPath + fileName);
             file.delete();
-            pendingFiles.put(fileNumber, new FileEntry(file,fileName,fileNumber));
+            pendingFiles.put(fileNumber, new FileEntry(file, fileName, fileNumber));
 
             // Create a descriptor for the Client Request message
             FileDescriptor descriptor = new FileDescriptor(0,fileName);
