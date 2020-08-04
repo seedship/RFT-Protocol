@@ -24,6 +24,7 @@ public class Client {
     private final long TIMEOUT_INTERVAL = 3000;
     private final int TRANSMISSION_RATE = 0;
     private final int RANDOM_FILENUMBER_UPPERBOUND = 255;
+    private final int RTT_DIVIDER = 4;
 
     private class FileEntry {
         File file;
@@ -190,7 +191,7 @@ public class Client {
     public void receiveAckNumber(int receivedAckNumber) {
         if (receivedAckNumber == currentAckNumber) {
             long rtt = System.currentTimeMillis() - rttStart;
-            ACK_INTERVAL = rtt / 4;
+            ACK_INTERVAL = rtt / RTT_DIVIDER;
             isNewAckNumberNeeded = true;
         }
     }
