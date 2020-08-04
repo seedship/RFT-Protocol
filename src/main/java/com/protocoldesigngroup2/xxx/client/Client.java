@@ -211,7 +211,7 @@ public class Client {
             pendingFiles.put(fileNumber, new FileEntry(file, fileName, fileNumber));
 
             // Create a descriptor for the Client Request message
-            FileDescriptor descriptor = new FileDescriptor(0,fileName);
+            FileDescriptor descriptor = new FileDescriptor(0, fileName);
             descriptors.add(descriptor);
         }
         
