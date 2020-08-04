@@ -24,4 +24,19 @@ public class utils {
             return null;
         }
     }
+
+    public static boolean compareMD5(byte[] sig1, byte[] sig2) {
+        // Check whether both lengths differ
+        if (sig1.length != sig2.length) {
+            return false;
+        }
+        // Check whether checksums differ in their values
+        for (int i = 0; i < Math.min(sig1.length, sig2.length); i++) {
+            if (sig1[i] != sig2[i]) {
+                return false;
+            }
+        }
+
+        return true;
+    }
 }

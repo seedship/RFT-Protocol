@@ -24,6 +24,7 @@ public class Client {
     private final long TIMEOUT_INTERVAL = 3000;
     private final int TRANSMISSION_RATE = 0;
     private final int RANDOM_FILENUMBER_UPPERBOUND = 255;
+    private final int RTT_DIVIDER = 4;
 
     private class FileEntry {
         File file;
@@ -31,7 +32,7 @@ public class Client {
         int fileNumber;
         long maxBufferOffset;
         long size;
-        long checksum;
+        byte[] checksum;
         Map<Long,byte[]> buffer;
 
         public FileEntry(File file, String name, int fileNumber) {
@@ -40,8 +41,8 @@ public class Client {
             this.fileNumber = fileNumber;
             this.maxBufferOffset = 0L;
             this.size = 0;
-            this.checksum = 0;
-            this.buffer = new HashMap<Long,byte[]>();
+            this.checksum = new byte[0];
+            this.buffer = new HashMap<Long, byte[]>();
         }
     }
 
@@ -131,7 +132,7 @@ public class Client {
             // Create an endpoint
             this.endpoint = new Endpoint(address, port);
 
-            this.network = Network.createClient(p,q);
+            this.network = Network.createClient(p, q);
 
             if (network == null) {
                 return;
@@ -190,7 +191,7 @@ public class Client {
     public void receiveAckNumber(int receivedAckNumber) {
         if (receivedAckNumber == currentAckNumber) {
             long rtt = System.currentTimeMillis() - rttStart;
-            ACK_INTERVAL = rtt / 4;
+            ACK_INTERVAL = rtt / RTT_DIVIDER;
             isNewAckNumberNeeded = true;
         }
     }
@@ -206,10 +207,12 @@ public class Client {
             String fileName = fileInfo;
             int fileNumber = generateFileNumber();
             // Add file entry to pending files
-            pendingFiles.put(fileNumber, new FileEntry(new File(destinationPath + fileName),fileName,fileNumber));
+            File file = new File(destinationPath + fileName);
+            file.delete();
+            pendingFiles.put(fileNumber, new FileEntry(file, fileName, fileNumber));
 
             // Create a descriptor for the Client Request message
-            FileDescriptor descriptor = new FileDescriptor(0,fileName);
+            FileDescriptor descriptor = new FileDescriptor(0, fileName);
             descriptors.add(descriptor);
         }
         
@@ -218,7 +221,7 @@ public class Client {
     }
 
     private void sendAck() {
-        for (Map.Entry<Integer,FileEntry> entry : pendingFiles.entrySet()) {
+        for (Map.Entry<Integer, FileEntry> entry : pendingFiles.entrySet()) {
             FileEntry fileEntry = entry.getValue();
 
             if (fileEntry.buffer.isEmpty()) continue;
@@ -284,6 +287,10 @@ public class Client {
     }
 
     private void finishDownload(int fileNumber) {
+        FileEntry fileEntry = pendingFiles.get(fileNumber);
+        if (!utils.compareMD5(fileEntry.checksum, utils.generateMD5(destinationPath + fileEntry.name))) {
+            restartDownload(fileNumber);
+        }
         System.out.println("Finish download of " + fileNumber);
         // Remove the file from the pending downloads
         pendingFiles.remove(fileNumber);
@@ -299,6 +306,7 @@ public class Client {
                     endpoint);
             ackThread.stopRunning();
             timeoutThread.stopRunning();
+            network.stopListening();
         }
     }
 
@@ -394,10 +402,10 @@ public class Client {
 
     public void restartDownloads() {
         // Restart the downloads of all pending files
-        pendingFiles.forEach((key,value) -> restartDownload(key));
+        pendingFiles.forEach((key, value) -> restartDownload(key));
     }
 
-    public void setFileMetadata(int fileNumber, long size, long checksum) {
+    public void setFileMetadata(int fileNumber, long size, byte[] checksum) {
         if (!pendingFiles.containsKey(fileNumber)) {
             return;
         }
@@ -408,9 +416,9 @@ public class Client {
         // Set the file size in the file entry
         fileEntry.size = size;
         // Compare the recently received checksum with the stored checksum if existing
-        if (fileEntry.checksum != 0) {
+        if (fileEntry.checksum.length != 0) {
             // Check whether both lengths differ
-            if (fileEntry.checksum != checksum) {
+            if (!utils.compareMD5(fileEntry.checksum,checksum)) {
                 // Send Wrong Checksum Close Connection Message
                 network.sendMessage(
                         new CloseConnection(
@@ -421,7 +429,7 @@ public class Client {
                 // Delete all data of the file which has been already received
                 fileEntry.file.delete();
                 fileEntry.size = 0;
-                fileEntry.checksum = 0;
+                fileEntry.checksum = new byte[0];
                 // Restart the download from scratch
                 restartDownload(fileNumber);
                 return;
