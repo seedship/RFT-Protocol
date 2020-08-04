@@ -42,7 +42,7 @@ public class Client {
             this.maxBufferOffset = 0L;
             this.size = 0;
             this.checksum = new byte[0];
-            this.buffer = new HashMap<Long,byte[]>();
+            this.buffer = new HashMap<Long, byte[]>();
         }
     }
 
@@ -132,7 +132,7 @@ public class Client {
             // Create an endpoint
             this.endpoint = new Endpoint(address, port);
 
-            this.network = Network.createClient(p,q);
+            this.network = Network.createClient(p, q);
 
             if (network == null) {
                 return;
@@ -209,10 +209,10 @@ public class Client {
             // Add file entry to pending files
             File file = new File(destinationPath + fileName);
             file.delete();
-            pendingFiles.put(fileNumber, new FileEntry(file,fileName,fileNumber));
+            pendingFiles.put(fileNumber, new FileEntry(file, fileName, fileNumber));
 
             // Create a descriptor for the Client Request message
-            FileDescriptor descriptor = new FileDescriptor(0,fileName);
+            FileDescriptor descriptor = new FileDescriptor(0, fileName);
             descriptors.add(descriptor);
         }
         
@@ -221,7 +221,7 @@ public class Client {
     }
 
     private void sendAck() {
-        for (Map.Entry<Integer,FileEntry> entry : pendingFiles.entrySet()) {
+        for (Map.Entry<Integer, FileEntry> entry : pendingFiles.entrySet()) {
             FileEntry fileEntry = entry.getValue();
 
             if (fileEntry.buffer.isEmpty()) continue;
@@ -288,7 +288,7 @@ public class Client {
 
     private void finishDownload(int fileNumber) {
         FileEntry fileEntry = pendingFiles.get(fileNumber);
-        if (!utils.compareMD5(fileEntry.checksum,utils.generateMD5(destinationPath + fileEntry.name))) {
+        if (!utils.compareMD5(fileEntry.checksum, utils.generateMD5(destinationPath + fileEntry.name))) {
             restartDownload(fileNumber);
         }
         System.out.println("Finish download of " + fileNumber);
@@ -402,7 +402,7 @@ public class Client {
 
     public void restartDownloads() {
         // Restart the downloads of all pending files
-        pendingFiles.forEach((key,value) -> restartDownload(key));
+        pendingFiles.forEach((key, value) -> restartDownload(key));
     }
 
     public void setFileMetadata(int fileNumber, long size, byte[] checksum) {
