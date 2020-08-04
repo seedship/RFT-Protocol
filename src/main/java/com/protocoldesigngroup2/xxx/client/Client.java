@@ -131,7 +131,7 @@ public class Client {
             // Create an endpoint
             this.endpoint = new Endpoint(address, port);
 
-            this.network = Network.createClient(p,q);
+            this.network = Network.createClient(p, q);
 
             if (network == null) {
                 return;
