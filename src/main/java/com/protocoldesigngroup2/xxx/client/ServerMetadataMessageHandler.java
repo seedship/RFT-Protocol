@@ -25,7 +25,6 @@ public class ServerMetadataMessageHandler implements MessageHandler {
             client.deletePendingFile(_message.fileNumber);
             return;
         }
-        // TODO: Add correct checksum here
         client.setFileMetadata(_message.fileNumber, _message.fileSize, _message.checksum);
     }
 
