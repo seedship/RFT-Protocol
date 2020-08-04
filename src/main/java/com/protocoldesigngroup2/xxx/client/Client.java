@@ -401,7 +401,7 @@ public class Client {
 
     public void restartDownloads() {
         // Restart the downloads of all pending files
-        pendingFiles.forEach((key,value) -> restartDownload(key));
+        pendingFiles.forEach((key, value) -> restartDownload(key));
     }
 
     public void setFileMetadata(int fileNumber, long size, byte[] checksum) {
