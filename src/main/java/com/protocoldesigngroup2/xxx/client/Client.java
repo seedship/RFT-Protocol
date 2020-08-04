@@ -220,7 +220,7 @@ public class Client {
     }
 
     private void sendAck() {
-        for (Map.Entry<Integer,FileEntry> entry : pendingFiles.entrySet()) {
+        for (Map.Entry<Integer, FileEntry> entry : pendingFiles.entrySet()) {
             FileEntry fileEntry = entry.getValue();
 
             if (fileEntry.buffer.isEmpty()) continue;
