@@ -287,7 +287,7 @@ public class Client {
 
     private void finishDownload(int fileNumber) {
         FileEntry fileEntry = pendingFiles.get(fileNumber);
-        if (!utils.compareMD5(fileEntry.checksum,utils.generateMD5(destinationPath + fileEntry.name))) {
+        if (!utils.compareMD5(fileEntry.checksum, utils.generateMD5(destinationPath + fileEntry.name))) {
             restartDownload(fileNumber);
         }
         System.out.println("Finish download of " + fileNumber);
