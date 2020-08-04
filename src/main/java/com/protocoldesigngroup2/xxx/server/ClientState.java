@@ -2,8 +2,12 @@ package com.protocoldesigngroup2.xxx.server;
 
 import com.protocoldesigngroup2.xxx.messages.ClientRequest;
 
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.RandomAccessFile;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -11,9 +15,17 @@ import static java.lang.Math.max;
 
 
 public class ClientState {
+    // Factor used to update rolling average RTT
+    private static final double MOVING_AVERAGE_WEIGHT = 0.2;
 
+    // Number of resend entries before decrementing transmisison
     private static final int NUM_WAIT_BEFORE_RESEND = 4;
-    private static final long INITIAL_TRANSMISSION_SPEED = 100;
+
+    // Initial transmission speed in packets/s
+    private static final long INITIAL_TRANSMISSION_SPEED = 20;
+
+    // Time to wait for first ack
+    private static final long INITIAL_WAIT_TIME = 5000L;
 
     public final List<ClientRequest.FileDescriptor> files;
     private long maximumTransmissionSpeed;
@@ -21,26 +33,35 @@ public class ClientState {
     private int currentFile;
     private long currentOffset;
 
-    private long lastReceivedAckNS;
+    private long lastReceivedAckMS;
     private int lastReceivedAckNum;
 
     private long transmissionSpeed;
 
-    //For simplicity, we will keep track of each missing index rather than start and offset
+    // Boolean flag used to check if calculated RTT should set estimated RTT or only used to average
+    private boolean calculatedRTT;
+    private long estimatedRTTMS;
+
+    // For simplicity, we will keep track of each missing index rather than start and offset
     public final Map<Integer, Set<Long>> missingChunks;
 
     public final Map<Integer, Boolean> sentMetadata;
 
     private int receivedDups; // Counter to keep track of x4 ACKs
 
+    private final Map<Integer, Optional<RandomAccessFile>> fileAccess;
+
     public ClientState(List<ClientRequest.FileDescriptor> files, long maximumTransmissionSpeed,
-                       long lastReceivedAckNS, int lastReceivedAckNum) {
+                       long lastReceivedAckMS, int lastReceivedAckNum) {
         this.files = files;
         this.maximumTransmissionSpeed = maximumTransmissionSpeed;
-        this.lastReceivedAckNS = lastReceivedAckNS;
+        this.lastReceivedAckMS = lastReceivedAckMS;
         this.lastReceivedAckNum = lastReceivedAckNum;
         missingChunks = new ConcurrentHashMap<>();
         sentMetadata = new ConcurrentHashMap<>();
+        fileAccess = new ConcurrentHashMap<>();
+        calculatedRTT = false;
+        estimatedRTTMS = INITIAL_WAIT_TIME;
         for (int idx = 0; idx < files.size(); idx++) {
             sentMetadata.put(idx, false);
         }
@@ -48,14 +69,57 @@ public class ClientState {
         receivedDups = 0;
         currentFile = 0;
         currentOffset = files.get(0).offset;
+        System.out.println("Adding client state with file hash: " + files.hashCode());
     }
 
-    public long getLastReceivedAckNS() {
-        return lastReceivedAckNS;
+    public RandomAccessFile getFileAccess(int index) {
+        if(fileAccess.containsKey(index)) {
+            Optional<RandomAccessFile> f = fileAccess.get(index);
+            return f.orElse(null);
+        }
+        try {
+            RandomAccessFile f = new RandomAccessFile(files.get(index).filename, "r");
+            fileAccess.put(index, Optional.of(f));
+            return f;
+        } catch (FileNotFoundException ex) {
+            // File does not exist or is directory
+            fileAccess.put(index, Optional.empty());
+            return null;
+        }
+    }
+
+    public void closeAllFiles() {
+        System.out.println("Closing all files in client state with file hash: " + files.hashCode());
+        for (Optional<RandomAccessFile> f : fileAccess.values()) {
+            if (f.isPresent()) {
+                try {
+                    f.get().close();
+                } catch (IOException ex) {
+                    ex.printStackTrace();
+                }
+            }
+        }
+        fileAccess.clear();
+    }
+
+    public long getLastReceivedAckMS() {
+        return lastReceivedAckMS;
+    }
+
+    public long getEstimatedRTTMS() {
+        return estimatedRTTMS;
     }
 
     public void updateLastReceivedAck(int ackNum) {
-        lastReceivedAckNS = java.time.LocalTime.now().toNanoOfDay();
+        // According to spec, client should send ack every RTT/4
+        long rtt = 4 * (System.currentTimeMillis() - lastReceivedAckMS);
+        if (!calculatedRTT) {
+            estimatedRTTMS = rtt;
+            calculatedRTT = true;
+        } else {
+            estimatedRTTMS = (long) ((1 - MOVING_AVERAGE_WEIGHT) * estimatedRTTMS + MOVING_AVERAGE_WEIGHT * rtt);
+        }
+        lastReceivedAckMS = System.currentTimeMillis();
         lastReceivedAckNum = ackNum;
     }
 
@@ -73,10 +137,10 @@ public class ClientState {
         currentOffset++;
     }
 
-    //Increments the current file and sets the offset if next file is valid
+    // Increments the current file and sets the offset if next file is valid
     public void incrementCurrentFile() {
         currentFile++;
-        if (currentOffset < files.size()) {
+        if (currentFile < files.size()) {
             currentOffset = files.get(currentFile).offset;
         }
     }
@@ -106,10 +170,12 @@ public class ClientState {
         if (maximumTransmissionSpeed > 0) {
             transmissionSpeed = max(maximumTransmissionSpeed, transmissionSpeed);
         }
+        System.out.println("Increasing Transmission speed to: " + transmissionSpeed);
     }
 
     public void decreaseRate() {
         transmissionSpeed = max(1, transmissionSpeed / 2);
+        System.out.println("Decreasing Transmission speed to: " + transmissionSpeed);
     }
 
     public long getTransmissionSpeed() {

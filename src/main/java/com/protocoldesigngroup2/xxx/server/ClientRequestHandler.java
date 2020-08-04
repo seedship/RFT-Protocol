@@ -5,8 +5,6 @@ import com.protocoldesigngroup2.xxx.messages.Message;
 import com.protocoldesigngroup2.xxx.network.Endpoint;
 import com.protocoldesigngroup2.xxx.network.MessageHandler;
 
-import java.time.LocalTime;
-
 public class ClientRequestHandler implements MessageHandler {
 
     private final Server server;
@@ -17,14 +15,13 @@ public class ClientRequestHandler implements MessageHandler {
 
     public void handleMessage(Message message, Endpoint endpoint) {
         if (!(message instanceof ClientRequest)) {
-            System.out.println("ClientRequestHandler received non Client Reuqest message");
+            System.out.println("ClientRequestHandler received non Client Request message");
             return;
         }
         ClientRequest req = (ClientRequest) message;
-        //TODO sync with network
-        ClientState s = new ClientState(req.files, req.maxTransmissionRate, LocalTime.now().toNanoOfDay(),
+        ClientState s = new ClientState(req.files, req.maxTransmissionRate, System.currentTimeMillis(),
                 req.ackNumber);
-
         server.clientStateMap.put(endpoint, s);
+        System.out.println("Added client state from endpoint " + endpoint + ". FileHash: " + s.files.hashCode());
     }
 }
