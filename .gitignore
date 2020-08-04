@@ -21,3 +21,6 @@ target/
 
 # Local History for Visual Studio Code
 .history/
+
+# xxx protocol
+download/
