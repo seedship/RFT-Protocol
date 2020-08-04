@@ -31,7 +31,7 @@ public class utils {
             return false;
         }
         // Check whether checksums differ in their values
-        for (int i=0; i<Math.min(sig1.length,sig2.length);i++) {
+        for (int i = 0; i < Math.min(sig1.length, sig2.length); i++) {
             if (sig1[i] != sig2[i]) {
                 return false;
             }
