@@ -158,6 +158,12 @@ public class Client {
         }
     }
 
+    private void stopThreads() {
+        ackThread.stopRunning();
+        timeoutThread.stopRunning();
+        network.stopListening();
+    }
+
     public void shutdown() {
         if (network != null) {
             network.sendMessage(
@@ -224,8 +230,6 @@ public class Client {
         for (Map.Entry<Integer, FileEntry> entry : pendingFiles.entrySet()) {
             FileEntry fileEntry = entry.getValue();
 
-            if (fileEntry.buffer.isEmpty()) continue;
-
             // Collect all resend entries for the respecting file
             List<ResendEntry> resendEntries = new ArrayList<ResendEntry>();
             short numberOfChunks = 0;
@@ -284,6 +288,10 @@ public class Client {
         // Delete the file and remove the file entry from the pending files
         fileEntry.file.delete();
         pendingFiles.remove(fileNumber);
+
+        if (pendingFiles.size() <= 0) {
+            stopThreads();
+        }
     }
 
     private void finishDownload(int fileNumber) {
@@ -304,9 +312,7 @@ public class Client {
                             new ArrayList<Option>(),
                             CloseConnection.Reason.DOWNLOAD_FINISHED),
                     endpoint);
-            ackThread.stopRunning();
-            timeoutThread.stopRunning();
-            network.stopListening();
+            stopThreads();
         }
     }
 

@@ -20,7 +20,11 @@ public class ServerMetadataMessageHandler implements MessageHandler {
         }
         client.receiveAckNumber(message.ackNumber);
         ServerMetadata _message = (ServerMetadata) message;
-        // TODO: Add correct checksum here
+
+        if (_message.status.id != ServerMetadata.DOWNLOAD_NORMAL_ID) {
+            client.deletePendingFile(_message.fileNumber);
+            return;
+        }
         client.setFileMetadata(_message.fileNumber, _message.fileSize, _message.checksum);
     }
 
