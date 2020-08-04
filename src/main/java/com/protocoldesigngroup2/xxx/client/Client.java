@@ -158,6 +158,12 @@ public class Client {
         }
     }
 
+    private void stopThreads() {
+        ackThread.stopRunning();
+        timeoutThread.stopRunning();
+        network.stopListening();
+    }
+
     public void shutdown() {
         if (network != null) {
             network.sendMessage(
@@ -284,6 +290,10 @@ public class Client {
         // Delete the file and remove the file entry from the pending files
         fileEntry.file.delete();
         pendingFiles.remove(fileNumber);
+
+        if (pendingFiles.size() <= 0) {
+            stopThreads();
+        }
     }
 
     private void finishDownload(int fileNumber) {
@@ -304,9 +314,7 @@ public class Client {
                             new ArrayList<Option>(),
                             CloseConnection.Reason.DOWNLOAD_FINISHED),
                     endpoint);
-            ackThread.stopRunning();
-            timeoutThread.stopRunning();
-            network.stopListening();
+            stopThreads();
         }
     }
 
