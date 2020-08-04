@@ -41,7 +41,7 @@ public class Client {
             this.maxBufferOffset = 0L;
             this.size = 0;
             this.checksum = new byte[0];
-            this.buffer = new HashMap<Long,byte[]>();
+            this.buffer = new HashMap<Long, byte[]>();
         }
     }
 
