@@ -230,8 +230,6 @@ public class Client {
         for (Map.Entry<Integer, FileEntry> entry : pendingFiles.entrySet()) {
             FileEntry fileEntry = entry.getValue();
 
-            if (fileEntry.buffer.isEmpty()) continue;
-
             // Collect all resend entries for the respecting file
             List<ResendEntry> resendEntries = new ArrayList<ResendEntry>();
             short numberOfChunks = 0;
