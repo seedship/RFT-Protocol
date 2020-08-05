@@ -204,27 +204,27 @@ public class Server extends Thread {
         // Set sent metadata true
         state.sentMetadata.put(idx, true);
         if (f != null) {
-            if (state.files.get(idx).offset >= f.length()) {
-                // Offset too big
-                network.sendMessage(new ServerMetadata(state.getLastReceivedAckNum(),
-                        new ArrayList<>(), ServerMetadata.Status.OFFSET_BIGGER_THAN_FILESIZE,
-                        idx, f.length(), md5), endpoint);
-                System.out.println("Sending Offset Too Big Metadata for file " + idx);
-                return true;
-            } else if (f.length() > 0) {
-                // Send Metadata as normal
-                network.sendMessage(new ServerMetadata(state.getLastReceivedAckNum(),
-                        new ArrayList<>(), ServerMetadata.Status.DOWNLOAD_NORMAL,
-                        idx, f.length(), md5), endpoint);
-                System.out.println("Sending Normal Metadata for file " + idx);
-                return false;
-            } else {
+            if (f.length() == 0) {
                 // Send Metadata with file empty
                 network.sendMessage(new ServerMetadata(state.getLastReceivedAckNum(),
                         new ArrayList<>(), ServerMetadata.Status.FILE_IS_EMPTY,
                         idx, f.length(), md5), endpoint);
                 System.out.println("Sending File Empty Metadata for file " + idx);
                 return true;
+            } else if (state.files.get(idx).offset >= f.length()) {
+                // Offset too big
+                network.sendMessage(new ServerMetadata(state.getLastReceivedAckNum(),
+                        new ArrayList<>(), ServerMetadata.Status.OFFSET_BIGGER_THAN_FILESIZE,
+                        idx, f.length(), md5), endpoint);
+                System.out.println("Sending Offset Too Big Metadata for file " + idx);
+                return true;
+            } else {
+                // Send Metadata as normal
+                network.sendMessage(new ServerMetadata(state.getLastReceivedAckNum(),
+                        new ArrayList<>(), ServerMetadata.Status.DOWNLOAD_NORMAL,
+                        idx, f.length(), md5), endpoint);
+                System.out.println("Sending Normal Metadata for file " + idx);
+                return false;
             }
         } else {
             // Send Metadata with file does not exist
