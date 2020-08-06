@@ -4,6 +4,7 @@ import com.protocoldesigngroup2.xxx.messages.CloseConnection;
 import com.protocoldesigngroup2.xxx.messages.Message;
 import com.protocoldesigngroup2.xxx.network.Endpoint;
 import com.protocoldesigngroup2.xxx.network.MessageHandler;
+import com.protocoldesigngroup2.xxx.utils.utils;
 
 public class CloseConnectionHandler implements MessageHandler {
     private final Server server;
@@ -14,15 +15,15 @@ public class CloseConnectionHandler implements MessageHandler {
 
     public void handleMessage(Message message, Endpoint endpoint) {
         if (!(message instanceof CloseConnection)) {
-            System.out.println("CloseConnectionHandler received non Close Connection message");
+            utils.printDebug("CloseConnectionHandler received non Close Connection message");
             return;
         }
         ClientState s = server.clientStateMap.remove(endpoint);
         if (s != null) {
             s.closeAllFiles();
-            System.out.println("Received Close Connection from endpoint " + endpoint + ". FileHash: " + s.files.hashCode());
+            utils.printDebug("Received Close Connection from endpoint " + endpoint + ". FileHash: " + s.files.hashCode());
         } else {
-            System.out.println("Received Close Connection from endpoint " + endpoint + ". However, this endpoint was not found.");
+            utils.printDebug("Received Close Connection from endpoint " + endpoint + ". However, this endpoint was not found.");
         }
     }
 

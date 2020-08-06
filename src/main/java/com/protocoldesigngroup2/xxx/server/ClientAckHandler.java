@@ -5,6 +5,7 @@ import com.protocoldesigngroup2.xxx.messages.CloseConnection;
 import com.protocoldesigngroup2.xxx.messages.Message;
 import com.protocoldesigngroup2.xxx.network.Endpoint;
 import com.protocoldesigngroup2.xxx.network.MessageHandler;
+import com.protocoldesigngroup2.xxx.utils.utils;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -21,13 +22,12 @@ public class ClientAckHandler implements MessageHandler {
 
     public void handleMessage(Message message, Endpoint endpoint) {
         if (!(message instanceof ClientAck)) {
-            System.out.println("ClientAckHandler received non Client ACK message");
+            utils.printDebug("ClientAckHandler received non Client ACK message");
             return;
         }
         ClientAck ack = (ClientAck) message;
-        // TODO sync with network
         // Get Client State
-        System.out.println("Received ACK from " + endpoint);
+        utils.printDebug("Received ACK from " + endpoint);
         ClientState clientState = server.clientStateMap.get(endpoint);
         if (clientState == null) {
             // Close Connection (Unknown RequestID)

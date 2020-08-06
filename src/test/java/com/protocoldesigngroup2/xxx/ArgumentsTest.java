@@ -31,6 +31,7 @@ public class ArgumentsTest
         Arguments args2 = Arguments.parse(args);
         assertEquals("", args2.getHostname());
         assertEquals(true, args2.isServer());
+        assertEquals(false, args2.isDebug());
         assertEquals(0.0f, args2.getP());
         assertEquals(0.0f, args2.getQ());
         assertEquals(1234, args2.getPort());
@@ -38,10 +39,11 @@ public class ArgumentsTest
     }
 
     public void testComplexServer() {
-        String[] args = {"-s", "-p", "0.2", "-t", "9501", "text.txt"};
+        String[] args = {"-s", "-p", "0.2", "-d", "-t", "9501", "text.txt"};
         Arguments args2 = Arguments.parse(args);
         assertEquals("", args2.getHostname());
         assertEquals(true, args2.isServer());
+        assertEquals(true, args2.isDebug());
         assertEquals(0.2f, args2.getP());
         assertEquals(0.2f, args2.getQ());
         assertEquals(9501, args2.getPort());
@@ -53,6 +55,7 @@ public class ArgumentsTest
         Arguments args2 = Arguments.parse(args);
         assertEquals("server.com", args2.getHostname());
         assertEquals(false, args2.isServer());
+        assertEquals(false, args2.isDebug());
         assertEquals(0.0f, args2.getP());
         assertEquals(0.0f, args2.getQ());
         assertEquals(1234, args2.getPort());
@@ -61,10 +64,11 @@ public class ArgumentsTest
     }
 
     public void testComplexClient() {
-        String[] args = {"server.com", "-p", "0.5", "-q", "0.1", "-t", "1296", "abc.xyz", "test1.txt"};
+        String[] args = {"server.com", "-p", "0.5", "-q", "0.1", "-t", "1296", "-d", "abc.xyz", "test1.txt"};
         Arguments args2 = Arguments.parse(args);
         assertEquals("server.com", args2.getHostname());
         assertEquals(false, args2.isServer());
+        assertEquals(true, args2.isDebug());
         assertEquals(0.5f, args2.getP());
         assertEquals(0.1f, args2.getQ());
         assertEquals(1296, args2.getPort());

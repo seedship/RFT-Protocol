@@ -32,7 +32,6 @@ public class CloseConnectionMessageHandler implements MessageHandler {
                 break;
             default:
                 break;
-
         }
     }
 

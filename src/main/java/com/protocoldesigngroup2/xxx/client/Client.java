@@ -3,8 +3,6 @@ package com.protocoldesigngroup2.xxx.client;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.net.InetAddress;
-import java.net.SocketException;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -23,8 +21,9 @@ import com.protocoldesigngroup2.xxx.utils.utils;
 public class Client {
     private final long TIMEOUT_INTERVAL = 3000;
     private final int TRANSMISSION_RATE = 0;
-    private final int RANDOM_FILENUMBER_UPPERBOUND = 255;
+    private final int RANDOM_FILE_NUMBER_UPPER_BOUND = 255;
     private final int RTT_DIVIDER = 4;
+    private final String DESTINATION_PATH = "./download/";
 
     private class FileEntry {
         File file;
@@ -33,7 +32,7 @@ public class Client {
         long maxBufferOffset;
         long size;
         byte[] checksum;
-        Map<Long,byte[]> buffer;
+        Map<Long, byte[]> buffer;
 
         public FileEntry(File file, String name, int fileNumber) {
             this.file = file;
@@ -47,70 +46,62 @@ public class Client {
     }
 
     private class AckThread extends Thread {
-        private boolean listening = true;
+        private boolean running;
 
         public void run() {
-            if (network == null) {
-                return;
-            }
-            while(listening) {
+            running = true;
+            while(running) {
                 try {
-                    sleep(ACK_INTERVAL);
+                    sleep(ackInterval);
                 } catch(InterruptedException ie) {
-                    ie.printStackTrace();
+                    utils.printDebug("AckThread interrupted");
                 }
                 sendAck();
             }
         }
 
         public void stopRunning() {
-            listening = false;
+            running = false;
+            this.interrupt();
         }  
     }
 
     private class TimeoutThread extends Thread {
-        private boolean running = true;
-
-        long lastIncomingDataTime;
+        private boolean running;
+        private long lastIncomingDataTime;
 
         public void reset() {
             lastIncomingDataTime = System.currentTimeMillis();
         }
 
         public void run() {
-            if (network == null) {
-                return;
-            }
             reset();
-            try {
-                sleep(TIMEOUT_INTERVAL);
-            } catch(InterruptedException ie) {
-                ie.printStackTrace();
-            }
-            while(running) {
-                long duration = System.currentTimeMillis() - lastIncomingDataTime;
-                reset();
-                if (duration > TIMEOUT_INTERVAL) {
+            running = true;
+            while (running) {
+                long durationWithoutData = System.currentTimeMillis() - lastIncomingDataTime;
+                if (durationWithoutData > TIMEOUT_INTERVAL) {
                     System.out.println("TIMEOUT");
                     network.sendMessage(
                             new CloseConnection(
-                                    getAckNumber(),
-                                    new ArrayList<Option>(),
-                                    CloseConnection.Reason.TIMEOUT),
+                                getAckNumber(),
+                                new ArrayList<>(),
+                                CloseConnection.Reason.TIMEOUT),
                             endpoint);
                     restartDownloads();
+                    reset();
                     continue;
                 }
                 try {
-                    sleep(TIMEOUT_INTERVAL - duration);
-                } catch(InterruptedException ie) {
-                    ie.printStackTrace();
+                    sleep(TIMEOUT_INTERVAL - durationWithoutData);
+                } catch (InterruptedException ie) {
+                    utils.printDebug("TimeoutThread interrupted");
                 }
             }
         }
 
         public void stopRunning() {
             running = false;
+            this.interrupt();
         }
     }
 
@@ -119,19 +110,26 @@ public class Client {
     private Network network;
     private AckThread ackThread;
     private TimeoutThread timeoutThread;
-    private Map<Integer,FileEntry> pendingFiles;
-    private long ACK_INTERVAL = 250;
+    private Map<Integer, FileEntry> pendingFiles;
+    private long ackInterval;
     private int currentAckNumber;
     private long rttStart;
-    
+    private int fileCount;
+    private boolean isNewAckNumberNeeded;
+
     public Client(String address, int port, float p, float q) {
-        this.destinationPath = "./download/";
+        this.destinationPath = DESTINATION_PATH;
+        this.pendingFiles = new HashMap<Integer, FileEntry>();
+        this.isNewAckNumberNeeded = true;
+        this.fileCount = 0;
+        this.ackInterval = 250;
+
+        // Creates download directory if needed
         new File(this.destinationPath).mkdirs();
-        this.pendingFiles = new HashMap<Integer,FileEntry>();
+
         try {
             // Create an endpoint
             this.endpoint = new Endpoint(address, port);
-
             this.network = Network.createClient(p, q);
 
             if (network == null) {
@@ -162,6 +160,7 @@ public class Client {
         ackThread.stopRunning();
         timeoutThread.stopRunning();
         network.stopListening();
+        utils.printDebug("Done");
     }
 
     public void shutdown() {
@@ -169,7 +168,7 @@ public class Client {
             network.sendMessage(
                     new CloseConnection(
                             getAckNumber(),
-                            new ArrayList<Option>(),
+                            new ArrayList<>(),
                             CloseConnection.Reason.UNSPECIFIED),
                     endpoint);
             network.stopListening();
@@ -177,27 +176,21 @@ public class Client {
         deletePendingFiles();
     }
 
-    int fileCount = 0;
     private int generateFileNumber() {
-        //Random rand = new Random();
-        //return rand.nextInt(RANDOM_FILENUMBER_UPPERBOUND);
         return fileCount++;
     }
 
-    //int ackNumberCount = 0;
     private void generateAckNumber() {
         rttStart = System.currentTimeMillis();
         Random rand = new Random();
-        this.currentAckNumber = rand.nextInt(RANDOM_FILENUMBER_UPPERBOUND);
-        //this.currentAckNumber = ackNumberCount++;
+        this.currentAckNumber = rand.nextInt(RANDOM_FILE_NUMBER_UPPER_BOUND);
         isNewAckNumberNeeded = false;
     }
 
-    boolean isNewAckNumberNeeded = true;
     public void receiveAckNumber(int receivedAckNumber) {
         if (receivedAckNumber == currentAckNumber) {
             long rtt = System.currentTimeMillis() - rttStart;
-            ACK_INTERVAL = rtt / RTT_DIVIDER;
+            ackInterval = rtt / RTT_DIVIDER;
             isNewAckNumberNeeded = true;
         }
     }
@@ -206,7 +199,7 @@ public class Client {
         if (network == null) {
             return;
         }
-        List<FileDescriptor> descriptors = new ArrayList<FileDescriptor>();
+        List<FileDescriptor> descriptors = new ArrayList<>();
         for (String fileInfo : fileInfos) {
             System.out.println("Downloading file \"" + fileInfo + "\" to " + destinationPath);
 
@@ -223,7 +216,7 @@ public class Client {
         }
         
         // Sent the Client Request Message over the network
-        network.sendMessage(new ClientRequest(getAckNumber(), new ArrayList<Option>(), TRANSMISSION_RATE, descriptors), endpoint);
+        network.sendMessage(new ClientRequest(getAckNumber(), new ArrayList<>(), TRANSMISSION_RATE, descriptors), endpoint);
     }
 
     private void sendAck() {
@@ -237,18 +230,17 @@ public class Client {
             for (long i = fileEntry.file.length() / utils.KB; i < fileEntry.maxBufferOffset; i++) {
                 // Check whether the chunk for the offset exists in the buffer
                 if (!fileEntry.buffer.containsKey(i)) {
-                    // If it is the first chunk in the continous sequence of unreceived offsets
+                    // If it is the first chunk in the continuous sequence of unreceived offsets
                     // set the this offset as the resendOffset of the resend entry
                     if (resendOffset == 0) {
                         resendOffset = i;
                     }
-                    // Increment the length of the continous sequence of unreceived offsets
+                    // Increment the length of the continuous sequence of unreceived offsets
                     numberOfChunks++;
                 } else {
-                    
                     if (numberOfChunks > 0) {
-                        System.out.println("Add resend entry:\tOffset: " + resendOffset + "\tNumber of Chunks: " + numberOfChunks);
-                        // If there is a chunk for the offset build a resend entry for the preceiding sequence of unreceived offsets
+                        utils.printDebug("Add resend entry:\tOffset: " + resendOffset + "\tNumber of Chunks: " + numberOfChunks);
+                        // If there is a chunk for the offset build a resend entry for the preceding sequence of unreceived offsets
                         resendEntries.add(new ResendEntry(entry.getKey(), resendOffset, numberOfChunks));
                     }
                     
@@ -258,7 +250,7 @@ public class Client {
                 }
             }
 
-            System.out.println("Send Client Ack message");
+            utils.printDebug("Send Client Ack message");
             // Send the Client Ack Message over the network
             network.sendMessage(
                     new ClientAck(
@@ -275,7 +267,7 @@ public class Client {
 
     public void deletePendingFiles() {
         // Delete the data of all pending files
-        pendingFiles.forEach((key,value) -> deletePendingFile(key));
+        pendingFiles.forEach((key, value) -> deletePendingFile(key));
     }
 
     public void deletePendingFile(int fileNumber) {
@@ -284,7 +276,7 @@ public class Client {
         }
         FileEntry fileEntry = pendingFiles.get(fileNumber);
 
-        System.out.println("Delete pending file " + fileEntry.name);
+        utils.printDebug("Delete pending file " + fileEntry.name);
         // Delete the file and remove the file entry from the pending files
         fileEntry.file.delete();
         pendingFiles.remove(fileNumber);
@@ -296,7 +288,7 @@ public class Client {
 
     private void finishDownload(int fileNumber) {
         FileEntry fileEntry = pendingFiles.get(fileNumber);
-        if (!utils.compareMD5(fileEntry.checksum, utils.generateMD5(destinationPath + fileEntry.name))) {
+        if (!Arrays.equals(fileEntry.checksum, utils.generateMD5(destinationPath + fileEntry.name))) {
             restartDownload(fileNumber);
         }
         System.out.println("Finish download of " + fileNumber);
@@ -309,7 +301,7 @@ public class Client {
             network.sendMessage(
                     new CloseConnection(
                             getAckNumber(),
-                            new ArrayList<Option>(),
+                            new ArrayList<>(),
                             CloseConnection.Reason.DOWNLOAD_FINISHED),
                     endpoint);
             stopThreads();
@@ -340,7 +332,7 @@ public class Client {
         }
 
         try {
-            System.out.println("Write chunk for offset " + chunkOffset + " to file");
+            utils.printDebug("Write chunk for offset " + chunkOffset + " to file");
             // Open output stream and write chunk to disk and remove it from the buffer
             FileOutputStream fileOut = new FileOutputStream(fileEntry.file, true);
             fileOut.write(fileEntry.buffer.get(chunkOffset));
@@ -364,7 +356,7 @@ public class Client {
         // If file does not exist yet, create it
         if (!fileEntry.file.exists()) {
             try {
-                System.out.println("Create new file " + fileEntry.name);
+                utils.printDebug("Create new file " + fileEntry.name);
                 fileEntry.file.createNewFile();
             } catch (IOException ioe) {
                 ioe.printStackTrace();
@@ -373,16 +365,16 @@ public class Client {
             }
         }
 
-        System.out.println("Add chunk for offset " + chunkOffset + " to buffer");
+        utils.printDebug("Add chunk for offset " + chunkOffset + " to buffer");
         // Write chunk to buffer and update maxBufferOffset if needed
         long bytesToWrite = utils.KB;
         if (fileEntry.size != 0) {
-            bytesToWrite = Math.min(bytesToWrite,fileEntry.size - chunkOffset);
+            bytesToWrite = Math.min(bytesToWrite, fileEntry.size - chunkOffset);
         }
-        fileEntry.buffer.put(chunkOffset, Arrays.copyOf(data,data.length));
+        fileEntry.buffer.put(chunkOffset, Arrays.copyOf(data, data.length));
         fileEntry.maxBufferOffset = Math.max(fileEntry.maxBufferOffset, chunkOffset);
         
-        // Check if a continous range of chunks has been received at current offset
+        // Check if a continuous range of chunks has been received at current offset
         // and write them to disk if so
         writeBufferToDisk(fileEntry);
     }
@@ -393,17 +385,17 @@ public class Client {
         }
         FileEntry fileEntry = pendingFiles.get(fileNumber);
 
-        System.out.println("Restart download of " + fileEntry.name);
+        utils.printDebug("Restart download of " + fileEntry.name);
 
         // Clear the buffer
         pendingFiles.get(fileNumber).buffer.clear();
         pendingFiles.get(fileNumber).maxBufferOffset = 0;
-        List<FileDescriptor> descriptors = new ArrayList<FileDescriptor>();
+        List<FileDescriptor> descriptors = new ArrayList<>();
         FileDescriptor descriptor = new FileDescriptor(fileEntry.file.length() / utils.KB, fileEntry.name);
         descriptors.add(descriptor);
 
         // Send a new Client Request for the respecting file
-        network.sendMessage(new ClientRequest(getAckNumber(), new ArrayList<Option>(), TRANSMISSION_RATE,descriptors), endpoint);
+        network.sendMessage(new ClientRequest(getAckNumber(), new ArrayList<>(), TRANSMISSION_RATE, descriptors), endpoint);
     }
 
     public void restartDownloads() {
@@ -417,19 +409,19 @@ public class Client {
         }
         FileEntry fileEntry = pendingFiles.get(fileNumber);
 
-        System.out.println("Receive metadata for file " + fileEntry.name + "\tsize: " + size);
+        utils.printDebug("Receive metadata for file " + fileEntry.name + "\tsize: " + size);
 
         // Set the file size in the file entry
         fileEntry.size = size;
         // Compare the recently received checksum with the stored checksum if existing
         if (fileEntry.checksum.length != 0) {
             // Check whether both lengths differ
-            if (!utils.compareMD5(fileEntry.checksum,checksum)) {
+            if (!Arrays.equals(fileEntry.checksum, checksum)) {
                 // Send Wrong Checksum Close Connection Message
                 network.sendMessage(
                         new CloseConnection(
                                 getAckNumber(),
-                                new ArrayList<Option>(),
+                                new ArrayList<>(),
                                 CloseConnection.Reason.WRONG_CHECKSUM),
                         endpoint);
                 // Delete all data of the file which has been already received

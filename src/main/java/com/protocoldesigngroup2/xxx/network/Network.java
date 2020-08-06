@@ -73,8 +73,9 @@ public class Network {
                 }
             }
         } catch (java.io.IOException e) {
-            System.out.println("Caught exception :( (" + e.getMessage() + ")");
+            System.out.println("IOException in listen(): " + e.getMessage());
         }
+        executor.shutdownNow();
     }
 
     public void stopListening() {
