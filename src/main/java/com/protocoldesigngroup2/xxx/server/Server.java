@@ -50,7 +50,7 @@ public class Server extends Thread {
         while (true) {
             try {
                 long startTimeMS = System.currentTimeMillis();
-                System.out.println("Entering service loop. Active Sessions: " + clientStateMap.size());
+                utils.printDebug("Entering service loop. Active Sessions: " + clientStateMap.size());
                 if (!clientStateMap.isEmpty()) {
                     // Go through each client state, and send data
                     // Starting from resend entries and then from current offset
@@ -65,7 +65,7 @@ public class Server extends Thread {
 
                 long nowMS = System.currentTimeMillis();
                 long sleepMS = PERIOD_MS - (nowMS - startTimeMS);
-                System.out.println("Finishing service loop, sleeping for " + sleepMS + " ms.");
+                utils.printDebug("Finishing service loop, sleeping for " + sleepMS + " ms.");
                 if (sleepMS > 0) {
                     sleep(sleepMS);
                 }
@@ -82,8 +82,8 @@ public class Server extends Thread {
             ClientState state = entry.getValue();
             Endpoint endpoint = entry.getKey();
             long lastHeardFrom = System.currentTimeMillis() - state.getLastReceivedAckMS();
-            long expireTime = SERVER_LEEWAY + 3 * state.getEstimatedRTTMS();
-            System.out.println(endpoint + " TTL is " + (expireTime - lastHeardFrom) + ". RTT is " + state.getEstimatedRTTMS());
+            long expireTime = SERVER_LEEWAY + 3 * state.getEstimatedRttMs();
+            utils.printDebug(endpoint + " TTL is " + (expireTime - lastHeardFrom) + ". RTT is " + state.getEstimatedRttMs());
             if (lastHeardFrom > expireTime) {
                 // Timeout expired, close session with reason timeout
                 expired.add(endpoint);
@@ -95,7 +95,7 @@ public class Server extends Thread {
             network.sendMessage(new CloseConnection(state.getLastReceivedAckNum(),
                     new ArrayList<>(), CloseConnection.Reason.TIMEOUT), endpoint);
             state.closeAllFiles();
-            System.out.println(endpoint + " has timed out");
+            utils.printDebug(endpoint + " has timed out");
         }
     }
 
@@ -118,9 +118,9 @@ public class Server extends Thread {
                             // NOTE - client can set resend entries from offsets that are beyond the
                             // file and this will be stuck forever
                             if (bytesRead != -1) {
-                                System.out.println("Sending payload for file " + resendEntry.getKey() + " at offset " + off + ".");
+                                utils.printDebug("Sending payload for file " + resendEntry.getKey() + " at offset " + off + " with size " + fileData.length + ".");
                                 network.sendMessage(new ServerPayload(state.getLastReceivedAckNum(),
-                                                new ArrayList<>(), resendEntry.getKey(), off, fileData),
+                                                new ArrayList<>(), resendEntry.getKey(), off, fileData, bytesRead),
                                         endpoint);
                                 remainingPackets--;
                                 if (remainingPackets == 0) {
@@ -170,13 +170,12 @@ public class Server extends Thread {
                 // Send Payloads
                 long off = state.getCurrentOffset();
                 RandomAccessFile f = state.getFileAccess(state.getCurrentFile());
-                System.out.println("Sending payload for file " + state.getCurrentFile() + " at offset " + off + ".");
-                // If file did not exist, filenumber should have been incremented in send metadata
+                utils.printDebug("Sending payload for file " + state.getCurrentFile() + " at offset " + off + ".");
+                // If file did not exist, file number should have been incremented in send metadata
                 assert f != null;
                 f.seek(off * utils.KB);
                 byte[] fileData = new byte[utils.KB];
                 int bytesRead = f.read(fileData);
-                System.out.println("bytes read: " + bytesRead);
                 if (bytesRead == -1) {
                     // reached EOF, move to next file
                     state.incrementCurrentFile();
@@ -184,13 +183,13 @@ public class Server extends Thread {
                     // Otherwise send payload
                     network.sendMessage(new ServerPayload(state.getLastReceivedAckNum(),
                                     new ArrayList<>(), state.getCurrentFile(), state.getCurrentOffset(),
-                                    fileData),
+                                    fileData, bytesRead),
                             endpoint);
                     state.incrementCurrentFileOffset();
                     remainingPackets--;
                 }
             }
-            System.out.println("Remaining packets: " + remainingPackets);
+            utils.printDebug("Remaining packets: " + remainingPackets);
         }
     }
 
@@ -209,21 +208,21 @@ public class Server extends Thread {
                 network.sendMessage(new ServerMetadata(state.getLastReceivedAckNum(),
                         new ArrayList<>(), ServerMetadata.Status.FILE_IS_EMPTY,
                         idx, f.length(), md5), endpoint);
-                System.out.println("Sending File Empty Metadata for file " + idx);
+                utils.printDebug("Sending File Empty Metadata for file " + idx);
                 return true;
             } else if (state.files.get(idx).offset >= f.length()) {
                 // Offset too big
                 network.sendMessage(new ServerMetadata(state.getLastReceivedAckNum(),
                         new ArrayList<>(), ServerMetadata.Status.OFFSET_BIGGER_THAN_FILESIZE,
                         idx, f.length(), md5), endpoint);
-                System.out.println("Sending Offset Too Big Metadata for file " + idx);
+                utils.printDebug("Sending Offset Too Big Metadata for file " + idx);
                 return true;
             } else {
                 // Send Metadata as normal
                 network.sendMessage(new ServerMetadata(state.getLastReceivedAckNum(),
                         new ArrayList<>(), ServerMetadata.Status.DOWNLOAD_NORMAL,
                         idx, f.length(), md5), endpoint);
-                System.out.println("Sending Normal Metadata for file " + idx);
+                utils.printDebug("Sending Normal Metadata for file " + idx);
                 return false;
             }
         } else {
@@ -231,7 +230,7 @@ public class Server extends Thread {
             network.sendMessage(new ServerMetadata(state.getLastReceivedAckNum(),
                     new ArrayList<>(), ServerMetadata.Status.FILE_DOES_NOT_EXIST,
                     idx, 0L, md5), endpoint);
-            System.out.println("Sending File Does Not exist Metadata for file " + idx);
+            utils.printDebug("Sending File Does Not exist Metadata for file " + idx);
             return true;
         }
     }

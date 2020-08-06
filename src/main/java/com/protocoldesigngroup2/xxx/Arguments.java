@@ -9,6 +9,7 @@ public class Arguments {
     public static final int DEFAULT_PORT = 1234;
 
     private boolean server;
+    private boolean debug;
     private int port;
     private float p, q;
     private String hostname;
@@ -16,6 +17,7 @@ public class Arguments {
 
     private Arguments() {
         server = true;
+        debug = false;
         port = DEFAULT_PORT;
         p = -1.0f;
         q = -1.0f;
@@ -45,6 +47,8 @@ public class Arguments {
                 args2.port = Math.min(65535, Math.max(1, Integer.parseInt(args[i + 1])));
                 i++;
                 continue;
+            } else if (args[i].equals("-d")) {
+                args2.debug = true;
             } else if (!args2.isServer()) {
                 // it must be a file
                 args2.filenames.add(args[i]);
@@ -71,6 +75,10 @@ public class Arguments {
     public boolean isServer() {
         return server;
     }
+    
+    public boolean isDebug() {
+        return debug;
+    }
 
     public int getPort() {
         return port;
@@ -93,8 +101,8 @@ public class Arguments {
     }
 
     public static String getHelp() {
-        return "Server: rft -s [-t <port>] [-p <p>] [-q <q>], Client: " +
-               "rft <hostname> [-t <port>] [-p <p>] [-q <q>] <file> ...";
+        return "Server: rft -s [-d] [-t <port>] [-p <p>] [-q <q>], Client: " +
+               "rft <hostname> [-d] [-t <port>] [-p <p>] [-q <q>] <file> ...";
     }
 
     @Override

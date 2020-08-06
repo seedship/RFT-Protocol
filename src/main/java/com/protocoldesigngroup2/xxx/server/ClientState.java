@@ -1,6 +1,7 @@
 package com.protocoldesigngroup2.xxx.server;
 
 import com.protocoldesigngroup2.xxx.messages.ClientRequest;
+import com.protocoldesigngroup2.xxx.utils.utils;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -18,7 +19,7 @@ public class ClientState {
     // Factor used to update rolling average RTT
     private static final double MOVING_AVERAGE_WEIGHT = 0.2;
 
-    // Number of resend entries before decrementing transmisison
+    // Number of resend entries before decrementing transmission
     private static final int NUM_WAIT_BEFORE_RESEND = 4;
 
     // Initial transmission speed in packets/s
@@ -40,7 +41,7 @@ public class ClientState {
 
     // Boolean flag used to check if calculated RTT should set estimated RTT or only used to average
     private boolean calculatedRTT;
-    private long estimatedRTTMS;
+    private long estimatedRttMs;
 
     // For simplicity, we will keep track of each missing index rather than start and offset
     public final Map<Integer, Set<Long>> missingChunks;
@@ -61,7 +62,7 @@ public class ClientState {
         sentMetadata = new ConcurrentHashMap<>();
         fileAccess = new ConcurrentHashMap<>();
         calculatedRTT = false;
-        estimatedRTTMS = INITIAL_WAIT_TIME;
+        estimatedRttMs = INITIAL_WAIT_TIME;
         for (int idx = 0; idx < files.size(); idx++) {
             sentMetadata.put(idx, false);
         }
@@ -69,7 +70,7 @@ public class ClientState {
         receivedDups = 0;
         currentFile = 0;
         currentOffset = files.get(0).offset;
-        System.out.println("Adding client state with file hash: " + files.hashCode());
+        utils.printDebug("Adding client state with file hash: " + files.hashCode());
     }
 
     public RandomAccessFile getFileAccess(int index) {
@@ -89,7 +90,7 @@ public class ClientState {
     }
 
     public void closeAllFiles() {
-        System.out.println("Closing all files in client state with file hash: " + files.hashCode());
+        utils.printDebug("Closing all files in client state with file hash: " + files.hashCode());
         for (Optional<RandomAccessFile> f : fileAccess.values()) {
             if (f.isPresent()) {
                 try {
@@ -106,18 +107,18 @@ public class ClientState {
         return lastReceivedAckMS;
     }
 
-    public long getEstimatedRTTMS() {
-        return estimatedRTTMS;
+    public long getEstimatedRttMs() {
+        return estimatedRttMs;
     }
 
     public void updateLastReceivedAck(int ackNum) {
         // According to spec, client should send ack every RTT/4
         long rtt = 4 * (System.currentTimeMillis() - lastReceivedAckMS);
         if (!calculatedRTT) {
-            estimatedRTTMS = rtt;
+            estimatedRttMs = rtt;
             calculatedRTT = true;
         } else {
-            estimatedRTTMS = (long) ((1 - MOVING_AVERAGE_WEIGHT) * estimatedRTTMS + MOVING_AVERAGE_WEIGHT * rtt);
+            estimatedRttMs = (long) ((1 - MOVING_AVERAGE_WEIGHT) * estimatedRttMs + MOVING_AVERAGE_WEIGHT * rtt);
         }
         lastReceivedAckMS = System.currentTimeMillis();
         lastReceivedAckNum = ackNum;
@@ -170,12 +171,12 @@ public class ClientState {
         if (maximumTransmissionSpeed > 0) {
             transmissionSpeed = max(maximumTransmissionSpeed, transmissionSpeed);
         }
-        System.out.println("Increasing Transmission speed to: " + transmissionSpeed);
+        utils.printDebug("Increasing Transmission speed to: " + transmissionSpeed);
     }
 
     public void decreaseRate() {
         transmissionSpeed = max(1, transmissionSpeed / 2);
-        System.out.println("Decreasing Transmission speed to: " + transmissionSpeed);
+        utils.printDebug("Decreasing Transmission speed to: " + transmissionSpeed);
     }
 
     public long getTransmissionSpeed() {

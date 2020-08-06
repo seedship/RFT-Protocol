@@ -11,8 +11,9 @@ public class ServerPayload extends Message {
     public final int fileNumber;
     public final long offset;
     public final byte[] payload;
+    public final int payloadLength;
     
-    public ServerPayload(int ackNumber, List<Option> options, int fileNumber, long offset, byte[] payload) {
+    public ServerPayload(int ackNumber, List<Option> options, int fileNumber, long offset, byte[] payload, int payloadLength) {
         super(ackNumber, options);
 
         if (payload.length > 1024) {
@@ -21,6 +22,7 @@ public class ServerPayload extends Message {
         this.fileNumber = fileNumber;
         this.offset = offset;
         this.payload = payload;
+        this.payloadLength = payloadLength;
     }
 
     public static ServerPayload decode(byte[] buffer, int offset, int length, int ackNumber, List<Option> options) {
@@ -36,12 +38,12 @@ public class ServerPayload extends Message {
         }
         byte[] payload = new byte[length - offset - SERVER_PAYLOAD_HEADER_LENGTH];
         System.arraycopy(buffer, offset + SERVER_PAYLOAD_HEADER_LENGTH, payload, 0, payload.length);
-        return new ServerPayload(ackNumber, options, fileNumber, parsedOffset, payload);
+        return new ServerPayload(ackNumber, options, fileNumber, parsedOffset, payload, payload.length);
     }
 
     @Override
     public byte[] encode() {
-        int totalLength = getGlobalHeaderLength() + SERVER_PAYLOAD_HEADER_LENGTH + payload.length;
+        int totalLength = getGlobalHeaderLength() + SERVER_PAYLOAD_HEADER_LENGTH + payloadLength;
         byte[] message = new byte[totalLength];
         int offset = encodeGlobalHeader(message);
 
@@ -55,7 +57,7 @@ public class ServerPayload extends Message {
         message[offset + 7] = (byte)((this.offset >> 8) & 0xff);
         message[offset + 8] = (byte)(this.offset & 0xff);
 
-        System.arraycopy(payload, 0, message, offset + 9, payload.length);
+        System.arraycopy(payload, 0, message, offset + 9, payloadLength);
 
         return message;
     }

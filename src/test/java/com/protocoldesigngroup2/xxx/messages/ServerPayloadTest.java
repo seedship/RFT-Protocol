@@ -5,6 +5,7 @@ import junit.framework.TestCase;
 import junit.framework.TestSuite;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 
 /**
  * Unit test for simple App.
@@ -35,7 +36,8 @@ public class ServerPayloadTest
             new ArrayList<>(),
             0,
             0,
-            new byte[0]);
+            new byte[0],
+            0);
         byte[] msg = expected.encode();
 
         ServerPayload got = ServerPayload.decode(msg, 3, msg.length, ackNumber, new ArrayList<>());
@@ -50,10 +52,28 @@ public class ServerPayloadTest
             new ArrayList<>(),
             12345,
             5789456123L,
-            pl);
+            pl,
+            pl.length);
         byte[] msg = expected.encode();
 
         ServerPayload got = ServerPayload.decode(msg, 3, msg.length, ackNumber, new ArrayList<>());
         assertEquals(expected, got);
+    }
+
+    public void testDecodeComplexDifferentPayloadLength() {
+        int ackNumber = 35;
+        byte[] pl = {(byte)0x12, (byte)0x5f, (byte)0x13, (byte)0x00, (byte)0x64, (byte)0x99};
+        ServerPayload expected = new ServerPayload(
+            ackNumber,
+            new ArrayList<>(),
+            12345,
+            5789456123L,
+            pl,
+            2);
+        byte[] msg = expected.encode();
+
+        ServerPayload got = ServerPayload.decode(msg, 3, msg.length, ackNumber, new ArrayList<>());
+        byte[] e = {(byte)0x12, (byte)0x5f};
+        Arrays.equals(got.payload, e);
     }
 }
