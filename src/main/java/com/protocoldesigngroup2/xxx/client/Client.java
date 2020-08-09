@@ -6,10 +6,10 @@ import java.io.IOException;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.concurrent.ConcurrentHashMap;
 
 import com.protocoldesigngroup2.xxx.messages.*;
 import com.protocoldesigngroup2.xxx.messages.ClientAck.ResendEntry;
@@ -41,7 +41,7 @@ public class Client {
             this.maxBufferOffset = 0L;
             this.size = 0;
             this.checksum = new byte[0];
-            this.buffer = new HashMap<Long, byte[]>();
+            this.buffer = new ConcurrentHashMap<Long, byte[]>();
         }
     }
 
@@ -119,7 +119,7 @@ public class Client {
 
     public Client(String address, int port, float p, float q) {
         this.destinationPath = DESTINATION_PATH;
-        this.pendingFiles = new HashMap<Integer, FileEntry>();
+        this.pendingFiles = new ConcurrentHashMap<Integer, FileEntry>();
         this.isNewAckNumberNeeded = true;
         this.fileCount = 0;
         this.ackInterval = 250;
@@ -434,6 +434,8 @@ public class Client {
             }
         }
         fileEntry.checksum = checksum;
+
+        writeBufferToDisk(fileEntry);
     }
 
     public int getAckNumber() {
