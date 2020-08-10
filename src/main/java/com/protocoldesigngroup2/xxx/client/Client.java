@@ -257,7 +257,8 @@ public class Client {
                             getAckNumber(),
                             new ArrayList<Option>(),
                             entry.getKey(),
-                            ClientAck.Status.NOTHING,
+                            true,
+                            0, // FIXME
                             TRANSMISSION_RATE,
                             fileEntry.maxBufferOffset + 1,
                             resendEntries),
