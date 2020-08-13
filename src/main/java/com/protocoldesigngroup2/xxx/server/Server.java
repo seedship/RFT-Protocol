@@ -16,13 +16,16 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class Server extends Thread {
     // Server will wait 3 seconds
     public static final long EXPIRE_TIME = 3000L;
-    public static final long PERIOD_MS = 1000L;
+    public static final long PERIOD_MS = 10L;
     public final Map<Endpoint, ClientState> clientStateMap;
     public final Network network;
+
+    public AtomicBoolean canIncrementSpeed;
 
     public Server(float p, float q, int port) {
         network = Network.createServer(p, q, port);
@@ -30,6 +33,7 @@ public class Server extends Thread {
         if (network == null) {
             return;
         }
+        canIncrementSpeed = new AtomicBoolean(true);
         network.addCallbackMethod(Message.Type.CLIENT_REQUEST, new ClientRequestHandler(this));
         network.addCallbackMethod(Message.Type.CLIENT_ACK, new ClientAckHandler(this));
         network.addCallbackMethod(Message.Type.CLOSE_CONNECTION, new CloseConnectionHandler(this));
@@ -49,8 +53,9 @@ public class Server extends Thread {
 
         while (true) {
             try {
+                canIncrementSpeed.set(true);
                 long startTimeMS = System.currentTimeMillis();
-                utils.printDebug("Entering service loop. Active Sessions: " + clientStateMap.size());
+//                utils.printDebug("Entering service loop. Active Sessions: " + clientStateMap.size());
                 if (!clientStateMap.isEmpty()) {
                     // Go through each client state, and send data
                     // Starting from resend entries and then from current offset
@@ -65,10 +70,12 @@ public class Server extends Thread {
 
                 long nowMS = System.currentTimeMillis();
                 long sleepMS = PERIOD_MS - (nowMS - startTimeMS);
-                utils.printDebug("Finishing service loop, sleeping for " + sleepMS + " ms.");
+//                utils.printDebug("Finishing service loop, sleeping for " + sleepMS + " ms.");
                 if (sleepMS > 0) {
                     sleep(sleepMS);
                 }
+            } catch (InterruptedException ex) {
+                //Client Request, wakeup
             } catch (Exception ex) {
                 System.out.println("Unexpected Exception: " + ex);
                 ex.printStackTrace();
@@ -170,7 +177,7 @@ public class Server extends Thread {
                 // Send Payloads
                 long off = state.getCurrentOffset();
                 RandomAccessFile f = state.getFileAccess(state.getCurrentFile());
-                utils.printDebug("Sending payload for file " + state.getCurrentFile() + " at offset " + off + ".");
+//                utils.printDebug("Sending payload for file " + state.getCurrentFile() + " at offset " + off + ".");
                 // If file did not exist, file number should have been incremented in send metadata
                 assert f != null;
                 f.seek(off * utils.KB);
@@ -189,7 +196,7 @@ public class Server extends Thread {
                     remainingPackets--;
                 }
             }
-            utils.printDebug("Remaining packets: " + remainingPackets);
+//            utils.printDebug("Remaining packets: " + remainingPackets);
         }
     }
 

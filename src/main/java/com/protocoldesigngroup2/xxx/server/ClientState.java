@@ -15,7 +15,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class ClientState {
     // Initial transmission speed in packets/s
-    private static final long INITIAL_TRANSMISSION_SPEED = 1000;
+    private static final long INITIAL_TRANSMISSION_SPEED = 10;
 
     public final List<ClientRequest.FileDescriptor> files;
     private long maximumTransmissionSpeed;

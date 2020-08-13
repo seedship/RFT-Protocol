@@ -8,7 +8,6 @@ import com.protocoldesigngroup2.xxx.network.MessageHandler;
 import com.protocoldesigngroup2.xxx.utils.utils;
 
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -28,7 +27,10 @@ public class ClientAckHandler implements MessageHandler {
         }
         ClientAck ack = (ClientAck) message;
         // Get Client State
-        utils.printDebug("Received ACK from " + endpoint);
+
+        if(server.canIncrementSpeed.get()) {
+            utils.printDebug("Received ACK from " + endpoint);
+        }
         ClientState clientState = server.clientStateMap.get(endpoint);
         if (clientState == null) {
             // Close Connection (Unknown RequestID)
@@ -43,6 +45,7 @@ public class ClientAckHandler implements MessageHandler {
         clientState.updateClientMaxTransmissionSpeed(ack.maxTransmissionRate);
         // Check for resend metadata
         if (ack.status == ClientAck.Status.NO_METADATA_RECEIVED) {
+            utils.printDebug("Client signaled metadata missing in ACK");
             clientState.sentMetadata.put(ack.fileNumber, false);
         }
         // Check for resend entries
@@ -66,10 +69,16 @@ public class ClientAckHandler implements MessageHandler {
                 }
             }
             // If there are resend entries, decrease rate
-            clientState.decreaseRate();
+            if(server.canIncrementSpeed.get()) {
+                server.canIncrementSpeed.set(false);
+                clientState.decreaseRate();
+            }
         } else {
             // If no resend entries, increase rate
-            clientState.increaseRate();
+            if(server.canIncrementSpeed.get()) {
+                server.canIncrementSpeed.set(false);
+                clientState.increaseRate();
+            }
         }
     }
 }

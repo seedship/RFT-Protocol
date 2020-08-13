@@ -62,7 +62,7 @@ public class Client {
         public void stopRunning() {
             running = false;
             this.interrupt();
-        }  
+        }
     }
 
     private class TimeoutThread extends Thread {
@@ -141,7 +141,7 @@ public class Client {
             // Create an endpoint
             this.endpoint = new Endpoint(address, port);
             createNetwork();
-            
+
             // Start the network
             new Thread(() -> {
                 this.network.listen();
@@ -233,7 +233,7 @@ public class Client {
             FileDescriptor descriptor = new FileDescriptor(0, fileName);
             descriptors.add(descriptor);
         }
-        
+
         // Sent the Client Request Message over the network
         network.sendMessage(new ClientRequest(getAckNumber(), new ArrayList<>(), TRANSMISSION_RATE, descriptors), endpoint);
     }
@@ -244,7 +244,7 @@ public class Client {
         boolean metadataMissing = false;
 
         // Collect all resend entries for the respecting file
-        List<ResendEntry> resendEntries = new ArrayList<ResendEntry>();
+        List<ResendEntry> resendEntries = new ArrayList<>();
 
         // If the client did not received the metadata of a file but already receives
         // the payload of a file with larger file number it should add a resend entry
@@ -284,7 +284,7 @@ public class Client {
                         // If there is a chunk for the offset build a resend entry for the preceding sequence of unreceived offsets
                         resendEntries.add(new ResendEntry(entry.getKey(), resendOffset, numberOfChunks));
                     }
-                    
+
                     // Reset the sequence collection
                     resendOffset = 0;
                     numberOfChunks = 0;
@@ -300,11 +300,11 @@ public class Client {
         network.sendMessage(
                 new ClientAck(
                         getAckNumber(),
-                        new ArrayList<Option>(),
+                        new ArrayList<>(),
                         highestFileNumber,
                         (metadataMissing) ?
-                                ClientAck.Status.NOTHING :
-                                ClientAck.Status.NO_METADATA_RECEIVED,
+                                ClientAck.Status.NO_METADATA_RECEIVED :
+                                ClientAck.Status.NOTHING,
                         TRANSMISSION_RATE,
                         highestOffset,
                         resendEntries),
@@ -371,7 +371,7 @@ public class Client {
         // Abort if buffer is empty, 
         // file does not exist or
         // the buffer does not contain the chunk at the next offset
-        if (fileEntry.buffer.isEmpty() 
+        if (fileEntry.buffer.isEmpty()
             || !fileEntry.file.exists()
             || !fileEntry.buffer.containsKey(chunkOffset)) {
             return;
@@ -419,7 +419,7 @@ public class Client {
         }
         fileEntry.buffer.put(chunkOffset, Arrays.copyOf(data, data.length));
         fileEntry.maxBufferOffset = Math.max(fileEntry.maxBufferOffset, chunkOffset);
-        
+
         // Check if a continuous range of chunks has been received at current offset
         // and write them to disk if so
         writeBufferToDisk(fileEntry);

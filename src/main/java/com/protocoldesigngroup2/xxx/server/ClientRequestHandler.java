@@ -24,5 +24,6 @@ public class ClientRequestHandler implements MessageHandler {
                 req.ackNumber);
         server.clientStateMap.put(endpoint, s);
         utils.printDebug("Added client state from endpoint " + endpoint + ". FileHash: " + s.files.hashCode());
+        server.interrupt();
     }
 }
