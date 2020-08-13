@@ -26,6 +26,9 @@ public class ClientState {
     private long currentAckOffset;
     private long lastAckOffset;
 
+    private int lastClientFileNum;
+    private int currentClientFileNum;
+
     private long lastReceivedAckMS;
     private int lastReceivedAckNum;
 
@@ -56,6 +59,8 @@ public class ClientState {
 
         currentAckOffset = 0;
         lastAckOffset = 0;
+        currentClientFileNum = 0;
+        lastClientFileNum = 0;
 
         utils.printDebug("Adding client state with file hash: " + files.hashCode());
     }
@@ -94,7 +99,9 @@ public class ClientState {
         return lastReceivedAckMS;
     }
 
-    public void updateLastReceivedAck(int ackNum, long offset) {
+    public void updateLastReceivedAck(int ackNum, long offset, int fileNum) {
+        lastClientFileNum = currentClientFileNum;
+        currentClientFileNum = fileNum;
         lastAckOffset = currentAckOffset;
         currentAckOffset = offset;
         lastReceivedAckMS = System.currentTimeMillis();
@@ -103,8 +110,9 @@ public class ClientState {
 
     // returns true if offset was moved back
     public boolean backtraceClient() {
-        if (lastAckOffset == currentAckOffset) {
+        if (lastAckOffset == currentAckOffset && lastClientFileNum == currentClientFileNum) {
             currentOffset = currentAckOffset;
+            currentFile = currentClientFileNum;
             return true;
         } else {
             return false;
