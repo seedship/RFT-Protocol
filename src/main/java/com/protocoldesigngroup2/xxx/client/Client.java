@@ -19,10 +19,9 @@ import com.protocoldesigngroup2.xxx.network.*;
 import com.protocoldesigngroup2.xxx.utils.utils;
 
 public class Client {
-    private final long TIMEOUT_INTERVAL = 3000;
     private final int TRANSMISSION_RATE = 0;
-    private final int RANDOM_FILE_NUMBER_UPPER_BOUND = 255;
-    private final int RTT_DIVIDER = 4;
+    // Send every rtt one client ack message
+    private final int RTT_DIVIDER = 1;
     private final String DESTINATION_PATH = "./download/";
 
     private class FileEntry {
@@ -79,7 +78,7 @@ public class Client {
             running = true;
             while (running) {
                 long durationWithoutData = System.currentTimeMillis() - lastIncomingDataTime;
-                if (durationWithoutData > TIMEOUT_INTERVAL) {
+                if (durationWithoutData > timeoutInterval) {
                     utils.printDebug("Timeout");
 
                     network.sendMessage(
@@ -93,7 +92,7 @@ public class Client {
                     continue;
                 }
                 try {
-                    sleep(TIMEOUT_INTERVAL - durationWithoutData);
+                    sleep(timeoutInterval - durationWithoutData);
                 } catch (InterruptedException ie) {
                     utils.printDebug("TimeoutThread interrupted");
                 }
@@ -113,11 +112,15 @@ public class Client {
     private TimeoutThread timeoutThread;
     private Map<Integer, FileEntry> pendingFiles;
     private long ackInterval;
+    private long timeoutInterval;
     private int currentAckNumber;
     private long rttStart;
     private int rttAckNumber;
     private int fileCount;
     private boolean isNewAckNumberNeeded;
+    private boolean isServerResponding;
+    private float p;
+    private float q;
 
     public Client(String address, int port, float p, float q) {
         this.destinationPath = DESTINATION_PATH;
@@ -125,7 +128,11 @@ public class Client {
         this.isNewAckNumberNeeded = true;
         this.fileCount = 0;
         this.ackInterval = 250;
+        this.timeoutInterval = 3000;
         this.currentAckNumber = 0;
+        this.p = p;
+        this.q = q;
+        this.isServerResponding = false;
 
         // Creates download directory if needed
         new File(this.destinationPath).mkdirs();
@@ -133,16 +140,7 @@ public class Client {
         try {
             // Create an endpoint
             this.endpoint = new Endpoint(address, port);
-            this.network = Network.createClient(p, q);
-
-            if (network == null) {
-                return;
-            }
-
-            // Register callbacks
-            this.network.addCallbackMethod(Type.SERVER_PAYLOAD, new ServerPayloadMessageHandler(this));
-            this.network.addCallbackMethod(Type.SERVER_METADATA, new ServerMetadataMessageHandler(this));
-            this.network.addCallbackMethod(Type.CLOSE_CONNECTION, new CloseConnectionMessageHandler(this));
+            createNetwork();
             
             // Start the network
             new Thread(() -> {
@@ -157,6 +155,23 @@ public class Client {
         } catch (UnknownHostException uhe) {
             uhe.printStackTrace();
         }
+    }
+
+    private void createNetwork() {
+        this.network = Network.createClient(p, q);
+
+        if (network == null) {
+            return;
+        }
+
+        // Register callbacks
+        this.network.addCallbackMethod(Type.SERVER_PAYLOAD, new ServerPayloadMessageHandler(this));
+        this.network.addCallbackMethod(Type.SERVER_METADATA, new ServerMetadataMessageHandler(this));
+        this.network.addCallbackMethod(Type.CLOSE_CONNECTION, new CloseConnectionMessageHandler(this));
+    }
+
+    public void serverResponds() {
+        this.isServerResponding = true;
     }
 
     private void stopThreads() {
@@ -403,6 +418,10 @@ public class Client {
     }
 
     public void restartDownloads() {
+        if (!isServerResponding) {
+            timeoutInterval *= 2;
+            createNetwork();
+        }
         // Restart the downloads of all pending files
         pendingFiles.forEach((key, value) -> restartDownload(key));
     }

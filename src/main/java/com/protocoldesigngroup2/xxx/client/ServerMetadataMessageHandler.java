@@ -18,6 +18,7 @@ public class ServerMetadataMessageHandler implements MessageHandler {
         if (!(message instanceof ServerMetadata)) {
             return;
         }
+        client.serverResponds();
         client.receiveAckNumber(message.ackNumber);
         ServerMetadata _message = (ServerMetadata) message;
 
