@@ -23,6 +23,9 @@ public class ClientState {
     private int currentFile;
     private long currentOffset;
 
+    private long currentAckOffset;
+    private long lastAckOffset;
+
     private long lastReceivedAckMS;
     private int lastReceivedAckNum;
 
@@ -50,6 +53,10 @@ public class ClientState {
         transmissionSpeed = INITIAL_TRANSMISSION_SPEED;
         currentFile = 0;
         currentOffset = files.get(0).offset;
+
+        currentAckOffset = 0;
+        lastAckOffset = 0;
+
         utils.printDebug("Adding client state with file hash: " + files.hashCode());
     }
 
@@ -87,10 +94,21 @@ public class ClientState {
         return lastReceivedAckMS;
     }
 
-    public void updateLastReceivedAck(int ackNum) {
-        // According to spec, client should send ack every RTT/4
+    public void updateLastReceivedAck(int ackNum, long offset) {
+        lastAckOffset = currentAckOffset;
+        currentAckOffset = offset;
         lastReceivedAckMS = System.currentTimeMillis();
         lastReceivedAckNum = ackNum;
+    }
+
+    // returns true if offset was moved back
+    public boolean backtraceClient() {
+        if (lastAckOffset == currentAckOffset) {
+            currentOffset = currentAckOffset;
+            return true;
+        } else {
+            return false;
+        }
     }
 
     public void incrementCurrentFileOffset() {
