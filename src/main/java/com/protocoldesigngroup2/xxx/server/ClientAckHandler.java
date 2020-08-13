@@ -11,6 +11,7 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class ClientAckHandler implements MessageHandler {
 
@@ -57,7 +58,7 @@ public class ClientAckHandler implements MessageHandler {
                 for (long index = entry.offset; index < entry.offset + entry.length; index++) {
                     Set<Long> missingChunks = clientState.missingChunks.get(fileNumber);
                     if (missingChunks == null) {
-                        clientState.missingChunks.put(fileNumber, new HashSet<>());
+                        clientState.missingChunks.put(fileNumber, ConcurrentHashMap.newKeySet());
                         missingChunks = clientState.missingChunks.get(fileNumber);
                     }
                     missingChunks.add(index);
