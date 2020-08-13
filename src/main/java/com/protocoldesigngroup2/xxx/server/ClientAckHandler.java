@@ -37,7 +37,7 @@ public class ClientAckHandler implements MessageHandler {
             return;
         }
         // Update ack, rtt, and last received time
-        clientState.updateLastReceivedAck(ack.ackNumber, ack.offset);
+        clientState.updateLastReceivedAck(ack.ackNumber, ack.offset, ack.fileNumber);
         // Update max transmission rate
         clientState.updateClientMaxTransmissionSpeed(ack.maxTransmissionRate);
         // Check for resend metadata

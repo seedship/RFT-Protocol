@@ -153,11 +153,9 @@ public class Server extends Thread {
             }
             if (state.getCurrentFile() >= state.files.size()) {
                 // Check if offset is not advancing. If so, move offset back
-                if (!state.backtraceClient()) {
-                    // If not,  all files for this client finished and no resend entries. Wait for client to close
-                    // Connection or ask for resend. Move to next connection
-                    return;
-                }
+                state.backtraceClient();
+                // Move to next connection
+                return;
             }
             // Send payload
             if (!state.sentMetadata.get(state.getCurrentFile())) {
