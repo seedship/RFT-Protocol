@@ -47,7 +47,8 @@ public class Arguments {
                 args2.port = Math.min(65535, Math.max(1, Integer.parseInt(args[i + 1])));
                 i++;
                 continue;
-            } else if (args[i].equals("-d")) {
+            } else if (args[i].equals("-v")) {
+                // Verbose
                 args2.debug = true;
             } else if (!args2.isServer()) {
                 // it must be a file

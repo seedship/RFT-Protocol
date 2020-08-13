@@ -51,7 +51,7 @@ public class Network {
             network.socket = new DatagramSocket();
             return network;
         } catch (java.net.SocketException ex) {
-            System.out.println("Sockt Exception in client creation");
+            System.out.println("Socket Exception in client creation");
             ex.printStackTrace();
             return null;
         }
@@ -73,7 +73,7 @@ public class Network {
                 }
             }
         } catch (java.io.IOException e) {
-            System.out.println("IOException in listen(): " + e.getMessage());
+            System.out.println("Done: " + e.getMessage());
         }
         executor.shutdownNow();
     }
