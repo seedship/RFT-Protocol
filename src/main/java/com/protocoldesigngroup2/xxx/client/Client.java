@@ -80,7 +80,8 @@ public class Client {
             while (running) {
                 long durationWithoutData = System.currentTimeMillis() - lastIncomingDataTime;
                 if (durationWithoutData > TIMEOUT_INTERVAL) {
-                    System.out.println("TIMEOUT");
+                    utils.printDebug("Timeout");
+
                     network.sendMessage(
                             new CloseConnection(
                                 getAckNumber(),
@@ -114,6 +115,7 @@ public class Client {
     private long ackInterval;
     private int currentAckNumber;
     private long rttStart;
+    private int rttAckNumber;
     private int fileCount;
     private boolean isNewAckNumberNeeded;
 
@@ -123,6 +125,7 @@ public class Client {
         this.isNewAckNumberNeeded = true;
         this.fileCount = 0;
         this.ackInterval = 250;
+        this.currentAckNumber = 0;
 
         // Creates download directory if needed
         new File(this.destinationPath).mkdirs();
@@ -180,15 +183,14 @@ public class Client {
         return fileCount++;
     }
 
-    private void generateAckNumber() {
+    private void rememberAckNumber() {
         rttStart = System.currentTimeMillis();
-        Random rand = new Random();
-        this.currentAckNumber = rand.nextInt(RANDOM_FILE_NUMBER_UPPER_BOUND);
+        this.rttAckNumber = currentAckNumber;
         isNewAckNumberNeeded = false;
     }
 
     public void receiveAckNumber(int receivedAckNumber) {
-        if (receivedAckNumber == currentAckNumber) {
+        if (receivedAckNumber == rttAckNumber) {
             long rtt = System.currentTimeMillis() - rttStart;
             ackInterval = rtt / RTT_DIVIDER;
             isNewAckNumberNeeded = true;
@@ -257,7 +259,9 @@ public class Client {
                         getAckNumber(),
                         new ArrayList<Option>(),
                         entry.getKey(),
-                        ClientAck.Status.NOTHING,
+                        (fileEntry.file.length() > 0) ?
+                                ClientAck.Status.NOTHING :
+                                ClientAck.Status.NO_METADATA_RECEIVED,
                         TRANSMISSION_RATE,
                         fileEntry.maxBufferOffset + 1,
                         resendEntries),
@@ -439,7 +443,8 @@ public class Client {
     }
 
     public int getAckNumber() {
-        if (isNewAckNumberNeeded) generateAckNumber();
+        currentAckNumber = (currentAckNumber + 1) % 256;
+        if (isNewAckNumberNeeded) rememberAckNumber();
         return currentAckNumber;
     }
 
