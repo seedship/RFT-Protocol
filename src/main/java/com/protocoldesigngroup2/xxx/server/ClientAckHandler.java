@@ -59,12 +59,10 @@ public class ClientAckHandler implements MessageHandler {
                     missingChunks.add(index);
                 }
             }
-            // For every N acks with resend entries, reduce sending rate
-            if (clientState.checkResendAndDecrement()) {
-                clientState.decreaseRate();
-            }
+            // If there are resend entries, decrease rate
+            clientState.decreaseRate();
         } else {
-            clientState.resetResendCounter();
+            // If no resend entries, increase rate
             clientState.increaseRate();
         }
     }
