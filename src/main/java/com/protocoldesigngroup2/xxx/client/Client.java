@@ -280,7 +280,7 @@ public class Client {
                     numberOfChunks++;
                 } else {
                     if (numberOfChunks > 0) {
-                        if (numberOfChunks == 256) {
+                        if (numberOfChunks >= 256) {
                             numberOfChunks = 255;
                         }
                         utils.printDebug("Add resend entry:\tOffset: " + resendOffset + "\tNumber of Chunks: " + numberOfChunks);

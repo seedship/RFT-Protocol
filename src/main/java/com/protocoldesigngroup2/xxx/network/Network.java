@@ -166,7 +166,7 @@ public class Network {
                 endpoint.getPort());
             socket.send(packet);
         } catch (java.io.IOException e) {
-            System.out.println("Caught exception :(");
+//            System.out.println("Caught exception :(");
         }
     }
 

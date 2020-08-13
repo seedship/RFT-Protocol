@@ -148,7 +148,7 @@ public class ClientState {
     }
 
     public void increaseRate() {
-        transmissionSpeed = Math.min(((long) (Integer.MAX_VALUE) << 1) + 1, (long) (transmissionSpeed * 1.5));
+        transmissionSpeed = Math.min(((long) (Integer.MAX_VALUE) << 1) + 1, (long) (transmissionSpeed * 2.0));
         if (maximumTransmissionSpeed > 0) {
             transmissionSpeed = Math.min(maximumTransmissionSpeed, transmissionSpeed);
         }
