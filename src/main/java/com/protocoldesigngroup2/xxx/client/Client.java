@@ -308,7 +308,7 @@ public class Client {
     private void finishDownload(int fileNumber) {
         FileEntry fileEntry = pendingFiles.get(fileNumber);
         if (!Arrays.equals(fileEntry.checksum, utils.generateMD5(destinationPath + fileEntry.name))) {
-            restartDownload(fileNumber);
+            System.out.println("Wrong Checksum!");
         }
         System.out.println("Finish download of " + fileNumber);
         // Remove the file from the pending downloads
