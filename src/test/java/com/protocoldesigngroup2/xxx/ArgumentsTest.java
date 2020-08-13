@@ -39,7 +39,7 @@ public class ArgumentsTest
     }
 
     public void testComplexServer() {
-        String[] args = {"-s", "-p", "0.2", "-d", "-t", "9501", "text.txt"};
+        String[] args = {"-s", "-p", "0.2", "-v", "-t", "9501", "text.txt"};
         Arguments args2 = Arguments.parse(args);
         assertEquals("", args2.getHostname());
         assertEquals(true, args2.isServer());
@@ -64,7 +64,7 @@ public class ArgumentsTest
     }
 
     public void testComplexClient() {
-        String[] args = {"server.com", "-p", "0.5", "-q", "0.1", "-t", "1296", "-d", "abc.xyz", "test1.txt"};
+        String[] args = {"server.com", "-p", "0.5", "-q", "0.1", "-t", "1296", "-v", "abc.xyz", "test1.txt"};
         Arguments args2 = Arguments.parse(args);
         assertEquals("server.com", args2.getHostname());
         assertEquals(false, args2.isServer());

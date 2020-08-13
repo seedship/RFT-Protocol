@@ -58,7 +58,7 @@ public class ClientAckTest
             new ArrayList<>(),
             21345,
             ClientAck.Status.NO_METADATA_RECEIVED,
-            3123456789L,
+            4294967295L,
             6321654987L,
             re);
         byte[] msg = expected.encode();
