@@ -118,7 +118,7 @@ public class Server extends Thread {
                             // NOTE - client can set resend entries from offsets that are beyond the
                             // file and this will be stuck forever
                             if (bytesRead != -1) {
-                                utils.printDebug("Sending payload for file " + resendEntry.getKey() + " at offset " + off + " with size " + fileData.length + ".");
+                                utils.printDebug("Sending resend payload for file " + resendEntry.getKey() + " at offset " + off + " with size " + fileData.length + ".");
                                 network.sendMessage(new ServerPayload(state.getLastReceivedAckNum(),
                                                 new ArrayList<>(), resendEntry.getKey(), off, fileData, bytesRead),
                                         endpoint);

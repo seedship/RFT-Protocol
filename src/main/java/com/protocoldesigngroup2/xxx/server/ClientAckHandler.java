@@ -50,6 +50,7 @@ public class ClientAckHandler implements MessageHandler {
         if (resendEntries.size() > 0) {
             // If resend entries are found, add the missing chunks to client state
             for (ClientAck.ResendEntry entry : ack.resendEntries) {
+                utils.printDebug("Adding Resend Entry at offset:" + entry.offset + " length: " + entry.length);
                 int fileNumber = entry.fileNumber;
                 if (entry.length == 0) {
                     // Entry with length of 0 means resend file metadata
