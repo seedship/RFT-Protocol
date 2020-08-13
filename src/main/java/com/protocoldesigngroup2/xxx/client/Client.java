@@ -208,6 +208,7 @@ public class Client {
         if (receivedAckNumber == rttAckNumber) {
             long rtt = System.currentTimeMillis() - rttStart;
             ackInterval = rtt / RTT_DIVIDER;
+            ackInterval = Math.min(ackInterval, 1);
             isNewAckNumberNeeded = true;
         }
     }
@@ -237,11 +238,33 @@ public class Client {
     }
 
     private void sendAck() {
+        int highestFileNumber = 0;
+        long highestOffset = 0;
+        boolean metadataMissing = false;
+
+        // Collect all resend entries for the respecting file
+        List<ResendEntry> resendEntries = new ArrayList<ResendEntry>();
+
+        // If the client did not received the metadata of a file but already receives
+        // the payload of a file with larger file number it should add a resend entry
+        // which specifies the highest of set of the file with 0 length
+        ResendEntry lastResendEntry = null;
+
         for (Map.Entry<Integer, FileEntry> entry : pendingFiles.entrySet()) {
             FileEntry fileEntry = entry.getValue();
 
-            // Collect all resend entries for the respecting file
-            List<ResendEntry> resendEntries = new ArrayList<ResendEntry>();
+            // If the metadata of one file is missing then set the corresponding status bit in the client ack message later on
+            metadataMissing = metadataMissing || fileEntry.size == 0;
+
+            if (fileEntry.maxBufferOffset > 0) {
+                // Add the resend Entry which indicates a pending download of the last visited file to the resendEntries
+                if (lastResendEntry != null) resendEntries.add(lastResendEntry);
+                lastResendEntry = null;
+                // Update highest file number and highest offset to current file status
+                highestFileNumber = entry.getKey();
+                highestOffset = fileEntry.maxBufferOffset + 1;
+            }
+
             short numberOfChunks = 0;
             long resendOffset = 0;
             for (long i = fileEntry.file.length() / utils.KB; i < fileEntry.maxBufferOffset; i++) {
@@ -266,22 +289,25 @@ public class Client {
                     numberOfChunks = 0;
                 }
             }
+            if (fileEntry.size == 0) {
+                lastResendEntry = new ResendEntry(entry.getKey(), fileEntry.maxBufferOffset + 1, (short) 0);
+            }
+        }
 
-            utils.printDebug("Send Client Ack message");
-            // Send the Client Ack Message over the network
-            network.sendMessage(
-                    new ClientAck(
+        utils.printDebug("Send Client Ack message");
+        // Send the Client Ack Message over the network
+        network.sendMessage(
+                new ClientAck(
                         getAckNumber(),
                         new ArrayList<Option>(),
-                        entry.getKey(),
-                        (fileEntry.file.length() > 0) ?
+                        highestFileNumber,
+                        (metadataMissing) ?
                                 ClientAck.Status.NOTHING :
                                 ClientAck.Status.NO_METADATA_RECEIVED,
                         TRANSMISSION_RATE,
-                        fileEntry.maxBufferOffset + 1,
+                        highestOffset,
                         resendEntries),
-                    endpoint);
-        }
+                endpoint);
     }
 
     public void deletePendingFiles() {
