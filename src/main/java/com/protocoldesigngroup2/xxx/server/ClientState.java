@@ -12,15 +12,10 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
-import static java.lang.Math.max;
-
 
 public class ClientState {
-    // Number of resend entries before decrementing transmission
-    private static final int NUM_WAIT_BEFORE_RESEND = 4;
-
     // Initial transmission speed in packets/s
-    private static final long INITIAL_TRANSMISSION_SPEED = 20;
+    private static final long INITIAL_TRANSMISSION_SPEED = 1000;
 
     public final List<ClientRequest.FileDescriptor> files;
     private long maximumTransmissionSpeed;
@@ -38,8 +33,6 @@ public class ClientState {
 
     public final Map<Integer, Boolean> sentMetadata;
 
-    private int receivedDups; // Counter to keep track of x4 ACKs
-
     private final Map<Integer, Optional<RandomAccessFile>> fileAccess;
 
     public ClientState(List<ClientRequest.FileDescriptor> files, long maximumTransmissionSpeed,
@@ -55,14 +48,13 @@ public class ClientState {
             sentMetadata.put(idx, false);
         }
         transmissionSpeed = INITIAL_TRANSMISSION_SPEED;
-        receivedDups = 0;
         currentFile = 0;
         currentOffset = files.get(0).offset;
         utils.printDebug("Adding client state with file hash: " + files.hashCode());
     }
 
     public RandomAccessFile getFileAccess(int index) {
-        if(fileAccess.containsKey(index)) {
+        if (fileAccess.containsKey(index)) {
             Optional<RandomAccessFile> f = fileAccess.get(index);
             return f.orElse(null);
         }
@@ -101,16 +93,6 @@ public class ClientState {
         lastReceivedAckNum = ackNum;
     }
 
-    public boolean checkResendAndDecrement() {
-        if (receivedDups == 0) {
-            receivedDups = NUM_WAIT_BEFORE_RESEND;
-            return true;
-        } else {
-            receivedDups--;
-            return false;
-        }
-    }
-
     public void incrementCurrentFileOffset() {
         currentOffset++;
     }
@@ -139,20 +121,16 @@ public class ClientState {
         maximumTransmissionSpeed = speed;
     }
 
-    public void resetResendCounter() {
-        receivedDups = NUM_WAIT_BEFORE_RESEND;
-    }
-
     public void increaseRate() {
-        transmissionSpeed++;
+        transmissionSpeed = Math.min(((long) (Integer.MAX_VALUE) << 1) + 1, (long) (transmissionSpeed * 1.5));
         if (maximumTransmissionSpeed > 0) {
-            transmissionSpeed = max(maximumTransmissionSpeed, transmissionSpeed);
+            transmissionSpeed = Math.min(maximumTransmissionSpeed, transmissionSpeed);
         }
         utils.printDebug("Increasing Transmission speed to: " + transmissionSpeed);
     }
 
     public void decreaseRate() {
-        transmissionSpeed = max(1, transmissionSpeed / 2);
+        transmissionSpeed = Math.max(2L, transmissionSpeed / 2);
         utils.printDebug("Decreasing Transmission speed to: " + transmissionSpeed);
     }
 
