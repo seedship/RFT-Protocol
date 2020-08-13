@@ -18,8 +18,8 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class Server extends Thread {
-    // Server will give 2 extra seconds to each file above what spec defines before closing connection
-    public static final long SERVER_LEEWAY = 2000L;
+    // Server will wait 3 seconds
+    public static final long EXPIRE_TIME = 3000L;
     public static final long PERIOD_MS = 1000L;
     public final Map<Endpoint, ClientState> clientStateMap;
     public final Network network;
@@ -82,9 +82,9 @@ public class Server extends Thread {
             ClientState state = entry.getValue();
             Endpoint endpoint = entry.getKey();
             long lastHeardFrom = System.currentTimeMillis() - state.getLastReceivedAckMS();
-            long expireTime = SERVER_LEEWAY + 3 * state.getEstimatedRttMs();
-            utils.printDebug(endpoint + " TTL is " + (expireTime - lastHeardFrom) + ". RTT is " + state.getEstimatedRttMs());
-            if (lastHeardFrom > expireTime) {
+            long ttl = EXPIRE_TIME - lastHeardFrom;
+            utils.printDebug(endpoint + " TTL is " + ttl + ".");
+            if (ttl < 0) {
                 // Timeout expired, close session with reason timeout
                 expired.add(endpoint);
             }

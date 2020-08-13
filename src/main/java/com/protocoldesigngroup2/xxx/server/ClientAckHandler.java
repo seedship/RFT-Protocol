@@ -36,7 +36,7 @@ public class ClientAckHandler implements MessageHandler {
                     CloseConnection.Reason.UNKNOWN_REQUEST_ID), endpoint);
             return;
         }
-        // Update ack and last received time
+        // Update ack, rtt, and last received time
         clientState.updateLastReceivedAck(ack.ackNumber);
         // Update max transmission rate
         clientState.updateClientMaxTransmissionSpeed(ack.maxTransmissionRate);

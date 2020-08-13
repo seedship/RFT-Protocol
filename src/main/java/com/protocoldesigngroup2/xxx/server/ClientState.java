@@ -16,17 +16,11 @@ import static java.lang.Math.max;
 
 
 public class ClientState {
-    // Factor used to update rolling average RTT
-    private static final double MOVING_AVERAGE_WEIGHT = 0.2;
-
     // Number of resend entries before decrementing transmission
     private static final int NUM_WAIT_BEFORE_RESEND = 4;
 
     // Initial transmission speed in packets/s
     private static final long INITIAL_TRANSMISSION_SPEED = 20;
-
-    // Time to wait for first ack
-    private static final long INITIAL_WAIT_TIME = 5000L;
 
     public final List<ClientRequest.FileDescriptor> files;
     private long maximumTransmissionSpeed;
@@ -38,10 +32,6 @@ public class ClientState {
     private int lastReceivedAckNum;
 
     private long transmissionSpeed;
-
-    // Boolean flag used to check if calculated RTT should set estimated RTT or only used to average
-    private boolean calculatedRTT;
-    private long estimatedRttMs;
 
     // For simplicity, we will keep track of each missing index rather than start and offset
     public final Map<Integer, Set<Long>> missingChunks;
@@ -61,8 +51,6 @@ public class ClientState {
         missingChunks = new ConcurrentHashMap<>();
         sentMetadata = new ConcurrentHashMap<>();
         fileAccess = new ConcurrentHashMap<>();
-        calculatedRTT = false;
-        estimatedRttMs = INITIAL_WAIT_TIME;
         for (int idx = 0; idx < files.size(); idx++) {
             sentMetadata.put(idx, false);
         }
@@ -107,19 +95,8 @@ public class ClientState {
         return lastReceivedAckMS;
     }
 
-    public long getEstimatedRttMs() {
-        return estimatedRttMs;
-    }
-
     public void updateLastReceivedAck(int ackNum) {
         // According to spec, client should send ack every RTT/4
-        long rtt = 4 * (System.currentTimeMillis() - lastReceivedAckMS);
-        if (!calculatedRTT) {
-            estimatedRttMs = rtt;
-            calculatedRTT = true;
-        } else {
-            estimatedRttMs = (long) ((1 - MOVING_AVERAGE_WEIGHT) * estimatedRttMs + MOVING_AVERAGE_WEIGHT * rtt);
-        }
         lastReceivedAckMS = System.currentTimeMillis();
         lastReceivedAckNum = ackNum;
     }
