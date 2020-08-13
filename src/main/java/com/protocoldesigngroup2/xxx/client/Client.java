@@ -254,14 +254,13 @@ public class Client {
             // Send the Client Ack Message over the network
             network.sendMessage(
                     new ClientAck(
-                            getAckNumber(),
-                            new ArrayList<Option>(),
-                            entry.getKey(),
-                            true,
-                            0, // FIXME
-                            TRANSMISSION_RATE,
-                            fileEntry.maxBufferOffset + 1,
-                            resendEntries),
+                        getAckNumber(),
+                        new ArrayList<Option>(),
+                        entry.getKey(),
+                        ClientAck.Status.NOTHING,
+                        TRANSMISSION_RATE,
+                        fileEntry.maxBufferOffset + 1,
+                        resendEntries),
                     endpoint);
         }
     }

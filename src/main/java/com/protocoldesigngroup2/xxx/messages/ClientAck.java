@@ -7,10 +7,33 @@ import java.util.ArrayList;
 public class ClientAck extends Message {
     
     public static final int RESEND_ENTRY_LENGTH = 10;
-    public static final int CLIENT_ACK_HEADER_LENGTH = 15;
+    public static final int CLIENT_ACK_HEADER_LENGTH = 14;
     
-    public static final byte METADATA_RECEIVED_MASK = (byte)0x80;
-    public static final byte RTT_MASK_BYTE_ONE = (byte)0x7f;
+    public static final int NOTHING_ID = 0;
+    public static final int NO_METADATA_RECEIVED_ID = 1;
+    
+    public static enum Status {
+        NOTHING(NOTHING_ID),
+        NO_METADATA_RECEIVED(NO_METADATA_RECEIVED_ID);
+ 
+        private int id;
+        private Status(int id) {
+            this.id = id;
+        }
+        public int getId() {
+            return id;
+        }
+        public static Status fromId(int id) throws WrongIdException {
+            switch (id) {
+            case NOTHING_ID:
+                return NOTHING;
+            case NO_METADATA_RECEIVED_ID:
+                return NO_METADATA_RECEIVED;
+            default:
+                throw new WrongIdException("Wrong status (ACK): " + id);
+            }
+        }
+    }
 
     public static class ResendEntry {
         public final int fileNumber;
@@ -60,30 +83,16 @@ public class ClientAck extends Message {
     }
 
     public final int fileNumber;
-    public final boolean metadataReceived;
-    public final int rtt;
+    public final Status status;
     public final long maxTransmissionRate;
     public final long offset;
     public final List<ResendEntry> resendEntries;
 
-    public ClientAck(
-            int ackNumber,
-            List<Option> options,
-            int fileNumber,
-            boolean metadataReceived,
-            int rtt,
-            long maxTransmissionRate,
-            long offset,
-            List<ResendEntry> resendEntries) {
+    public ClientAck(int ackNumber, List<Option> options, int fileNumber, Status status, long maxTransmissionRate, long offset, List<ResendEntry> resendEntries) {
         super(ackNumber, options);
 
-        if (rtt > 32767 || fileNumber > 65535 || maxTransmissionRate > 4294967295L || offset > 72057594037927935L) {
-            throw new RuntimeException("Invalid inputs for ClientAck: " + rtt + ", " + fileNumber + ", " + maxTransmissionRate + ", " + offset);
-        }
-
         this.fileNumber = fileNumber;
-        this.metadataReceived = metadataReceived;
-        this.rtt = rtt;
+        this.status = status;
         this.maxTransmissionRate = maxTransmissionRate;
         this.offset = offset;
         this.resendEntries = resendEntries;
@@ -96,16 +105,21 @@ public class ClientAck extends Message {
         }
         
         int fileNumber = ((buffer[offset] & 0xff) << 8) + (buffer[offset + 1] & 0xff);
-        boolean metadataReceived = (buffer[offset + 2] & METADATA_RECEIVED_MASK) != 0;
-        int rtt = ((buffer[offset + 2] & RTT_MASK_BYTE_ONE) << 8) + (buffer[offset + 3] & 0xff);
-        
+
+        Status status;
+        try {
+            status = Status.fromId(buffer[offset + 2] & 0xff);
+        } catch (WrongIdException e) {
+            e.printStackTrace();
+            return null;
+        }
         long maxTransmissionRate = 0;
         for (int i = 0; i < 4; i++) {
-            maxTransmissionRate = (maxTransmissionRate << 8) + (buffer[offset + 4 + i] & 0xff);
+            maxTransmissionRate = (maxTransmissionRate << 8) + (buffer[offset + 3 + i] & 0xff);
         }
         long parsedOffset = 0;
         for (int i = 0; i < 7; i++) {
-            parsedOffset = (parsedOffset << 8) + (buffer[offset + 8 + i] & 0xff);
+            parsedOffset = (parsedOffset << 8) + (buffer[offset + 7 + i] & 0xff);
         }
         offset += CLIENT_ACK_HEADER_LENGTH;
 
@@ -124,7 +138,7 @@ public class ClientAck extends Message {
             offset += RESEND_ENTRY_LENGTH;
         }
 
-        return new ClientAck(ackNumber, options, fileNumber, metadataReceived, rtt, maxTransmissionRate, parsedOffset, resendEntries);
+        return new ClientAck(ackNumber, options, fileNumber, status, maxTransmissionRate, parsedOffset, resendEntries);
     }
 
     @Override
@@ -139,22 +153,20 @@ public class ClientAck extends Message {
         // FileNumber & Status
         message[offset] = (byte)((fileNumber >> 8) & 0xff);
         message[offset + 1] = (byte)(fileNumber & 0xff);
-
-        message[offset + 2] = (byte)((rtt + (metadataReceived ? 32768 : 0)) >> 8);
-        message[offset + 3] = (byte)(rtt & 0xff);
+        message[offset + 2] = (byte)(status.getId());
         // TransmissionRate
-        message[offset + 4] = (byte)((maxTransmissionRate >> 24) & 0xff);
-        message[offset + 5] = (byte)((maxTransmissionRate >> 16) & 0xff);
-        message[offset + 6] = (byte)((maxTransmissionRate >> 8) & 0xff);
-        message[offset + 7] = (byte)(maxTransmissionRate & 0xff);
+        message[offset + 3] = (byte)((maxTransmissionRate >> 24) & 0xff);
+        message[offset + 4] = (byte)((maxTransmissionRate >> 16) & 0xff);
+        message[offset + 5] = (byte)((maxTransmissionRate >> 8) & 0xff);
+        message[offset + 6] = (byte)(maxTransmissionRate & 0xff);
         // Offset
-        message[offset + 8] = (byte)((this.offset >> 48) & 0xff);
-        message[offset + 9] = (byte)((this.offset >> 40) & 0xff);
-        message[offset + 10] = (byte)((this.offset >> 32) & 0xff);
-        message[offset + 11] = (byte)((this.offset >> 24) & 0xff);
-        message[offset + 12] = (byte)((this.offset >> 16) & 0xff);
-        message[offset + 13] = (byte)((this.offset >> 8) & 0xff);
-        message[offset + 14] = (byte)(this.offset & 0xff);
+        message[offset + 7] = (byte)((this.offset >> 48) & 0xff);
+        message[offset + 8] = (byte)((this.offset >> 40) & 0xff);
+        message[offset + 9] = (byte)((this.offset >> 32) & 0xff);
+        message[offset + 10] = (byte)((this.offset >> 24) & 0xff);
+        message[offset + 11] = (byte)((this.offset >> 16) & 0xff);
+        message[offset + 12] = (byte)((this.offset >> 8) & 0xff);
+        message[offset + 13] = (byte)(this.offset & 0xff);
         
         offset += CLIENT_ACK_HEADER_LENGTH;
         for (ResendEntry resendEntry : resendEntries) {
@@ -174,8 +186,7 @@ public class ClientAck extends Message {
         String r = "ClientAck; ackNumber: " + ackNumber
                 + ", Version: " + version
                 + ", Filenumber: " + fileNumber
-                + ", metadataReceived: " + metadataReceived
-                + ", rtt: " + rtt
+                + ", status: " + status
                 + ", maxTransmissionRate: " + maxTransmissionRate
                 + ", offset: " + offset;
         for (ResendEntry re : resendEntries) {
@@ -198,8 +209,7 @@ public class ClientAck extends Message {
             && ackNumber == clientAck.ackNumber
             && options.equals(clientAck.options)
             && fileNumber == clientAck.fileNumber
-            && metadataReceived == clientAck.metadataReceived
-            && rtt == clientAck.rtt
+            && status == clientAck.status
             && maxTransmissionRate == clientAck.maxTransmissionRate
             && offset == clientAck.offset
             && resendEntries.equals(clientAck.resendEntries);

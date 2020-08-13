@@ -34,7 +34,7 @@ public class ArgumentsTest
         assertEquals(false, args2.isDebug());
         assertEquals(0.0f, args2.getP());
         assertEquals(0.0f, args2.getQ());
-        assertEquals(1234, args2.getPort());
+        assertEquals(Arguments.DEFAULT_PORT, args2.getPort());
         assertEquals(0, args2.getFilenames().size());
     }
 
@@ -58,7 +58,7 @@ public class ArgumentsTest
         assertEquals(false, args2.isDebug());
         assertEquals(0.0f, args2.getP());
         assertEquals(0.0f, args2.getQ());
-        assertEquals(1234, args2.getPort());
+        assertEquals(Arguments.DEFAULT_PORT, args2.getPort());
         assertEquals(1, args2.getFilenames().size());
         assertEquals("test1.txt", args2.getFilenames().get(0));
     }
