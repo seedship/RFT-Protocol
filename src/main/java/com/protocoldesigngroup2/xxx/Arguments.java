@@ -6,7 +6,7 @@ import java.util.ArrayList;
 
 public class Arguments {
     
-    public static final int DEFAULT_PORT = 1234;
+    public static final int DEFAULT_PORT = 2020;
 
     private boolean server;
     private boolean debug;

@@ -37,8 +37,7 @@ public class ClientAckTest
             ackNumber,
             new ArrayList<>(),
             0,
-            false,
-            0,
+            ClientAck.Status.NOTHING,
             0,
             0,
             new ArrayList<>());
@@ -58,8 +57,7 @@ public class ClientAckTest
             ackNumber,
             new ArrayList<>(),
             21345,
-            true,
-            32767,
+            ClientAck.Status.NO_METADATA_RECEIVED,
             3123456789L,
             6321654987L,
             re);

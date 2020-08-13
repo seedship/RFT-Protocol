@@ -41,7 +41,7 @@ public class ClientAckHandler implements MessageHandler {
         // Update max transmission rate
         clientState.updateClientMaxTransmissionSpeed(ack.maxTransmissionRate);
         // Check for resend metadata
-        if (!ack.metadataReceived) {
+        if (ack.status == ClientAck.Status.NO_METADATA_RECEIVED) {
             clientState.sentMetadata.put(ack.fileNumber, false);
         }
         // Check for resend entries
