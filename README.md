@@ -1,10 +1,10 @@
 # XXX protocol Java implementation
 
-This is the java implemenation of the [XXX protocol](http://https://rfc.lennardn.xyz).
+This is the java implemenation of the [XXX protocol](https://rfc.lennardn.xyz).
 
 ## Build
 
-To build it, you need [Apache Maven](http://https://maven.apache.org) installed. Then you can call `mvn package` to build it and run all tests. The final executable will be in the target folder.
+To build it, you need [Apache Maven](https://maven.apache.org) installed. Then you can call `mvn package` to build it and run all tests. The final executable will be in the target folder.
 
 ## Usage
 
