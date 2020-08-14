@@ -179,21 +179,22 @@ public class Server extends Thread {
                 RandomAccessFile f = state.getFileAccess(state.getCurrentFile());
 //                utils.printDebug("Sending payload for file " + state.getCurrentFile() + " at offset " + off + ".");
                 // If file did not exist, file number should have been incremented in send metadata
-                assert f != null;
-                f.seek(off * utils.KB);
-                byte[] fileData = new byte[utils.KB];
-                int bytesRead = f.read(fileData);
-                if (bytesRead == -1) {
-                    // reached EOF, move to next file
-                    state.incrementCurrentFile();
-                } else {
-                    // Otherwise send payload
-                    network.sendMessage(new ServerPayload(state.getLastReceivedAckNum(),
-                                    new ArrayList<>(), state.getCurrentFile(), state.getCurrentOffset(),
-                                    fileData, bytesRead),
-                            endpoint);
-                    state.incrementCurrentFileOffset();
-                    remainingPackets--;
+                if (f != null) {
+                    f.seek(off * utils.KB);
+                    byte[] fileData = new byte[utils.KB];
+                    int bytesRead = f.read(fileData);
+                    if (bytesRead == -1) {
+                        // reached EOF, move to next file
+                        state.incrementCurrentFile();
+                    } else {
+                        // Otherwise send payload
+                        network.sendMessage(new ServerPayload(state.getLastReceivedAckNum(),
+                                        new ArrayList<>(), state.getCurrentFile(), state.getCurrentOffset(),
+                                        fileData, bytesRead),
+                                endpoint);
+                        state.incrementCurrentFileOffset();
+                        remainingPackets--;
+                    }
                 }
             }
 //            utils.printDebug("Remaining packets: " + remainingPackets);
