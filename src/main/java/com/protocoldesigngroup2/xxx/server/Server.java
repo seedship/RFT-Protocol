@@ -51,6 +51,8 @@ public class Server extends Thread {
             this.network.listen();
         }).start();
 
+        System.out.println("Started server");
+
         while (true) {
             try {
                 canIncrementSpeed.set(true);
