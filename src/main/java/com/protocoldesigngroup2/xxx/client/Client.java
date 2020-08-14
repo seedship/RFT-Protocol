@@ -208,7 +208,8 @@ public class Client {
         if (receivedAckNumber == rttAckNumber) {
             long rtt = System.currentTimeMillis() - rttStart;
             ackInterval = rtt / RTT_DIVIDER;
-            ackInterval = Math.min(ackInterval, 1);
+            ackInterval = Math.max(ackInterval, 1);
+            ackInterval = Math.min(ackInterval, 500);
             isNewAckNumberNeeded = true;
         }
     }
