@@ -478,11 +478,7 @@ public class Client {
                         endpoint);
                 // Delete all data of the file which has been already received
                 fileEntry.file.delete();
-                fileEntry.size = 0;
-                fileEntry.checksum = new byte[0];
-                // Restart the download from scratch
-                restartDownload(fileNumber);
-                return;
+                utils.printDebug("File " + fileEntry.name + " has been changed!");
             }
         }
         fileEntry.checksum = checksum;
