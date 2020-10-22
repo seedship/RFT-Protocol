@@ -1,6 +1,6 @@
 # XXX protocol Java implementation
 
-This is the java implemenation of the [XXX protocol](https://rfc.lennardn.xyz).
+This is the java implemenation of the [XXX protocol](https://rfc.lennardn.xyz). This repository is a public fork of [this one](https://gitlab.lrz.de/ga96xic/xxx-protocol)
 
 ## Build
 
