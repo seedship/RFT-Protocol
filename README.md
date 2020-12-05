@@ -2,6 +2,8 @@
 
 This is the java implemenation of the [XXX protocol](https://rfc.lennardn.xyz). This repository is a public fork of [this one](https://gitlab.lrz.de/ga96xic/xxx-protocol)
 
+A video of this Java implementation of the protocol in action can be found [here](https://codimd.lennardn.xyz/FozGSErxSYu41b3-hre_SA#)
+
 ## Build
 
 To build it, you need [Apache Maven](https://maven.apache.org) installed. Then you can call `mvn package` to build it and run all tests. The final executable will be in the target folder.
