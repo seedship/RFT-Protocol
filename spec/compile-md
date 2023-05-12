@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+set -e
+
+# Requires mmark (https://github.com/mmarkdown/mmark) and xml2rfc (https://pypi.org/project/xml2rfc/)
+
+if [ -z "$1" ]; then
+   echo "Usage: $0 <input.md>"
+   exit 1
+fi
+
+in_file="$1"
+xml_file="$(mktemp)"
+txt_out_file="${in_file%.*}.txt"
+html_out_file="${in_file%.*}.html"
+
+mmark "$1" > "$xml_file"
+xml2rfc --v3 --text "$xml_file" -o "$txt_out_file"
+xml2rfc --v3 --html "$xml_file" -o "$html_out_file"
+
+rm "$xml_file"
